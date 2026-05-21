@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookDork — Planes y precios" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>BookDork — Planes</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/auth.css" />
+  <link rel="stylesheet" href="/static/plans.css" />
+</head>
+<body data-public="true">
+
+  <!-- Overlay mientras se verifica la sesión -->
+  <div id="auth-loading" class="auth-loading-overlay" aria-hidden="true">
+    <div class="auth-loading-spinner"></div>
+  </div>
+
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/" class="logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <div class="header-stats" id="header-stats" aria-live="polite">
+        <span class="stat-badge" id="stat-indexed">
+          <span class="stat-dot"></span>
+          <span class="stat-label">Estado del servidor</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="plans-main">
+
+    <!-- Hero -->
+    <section class="plans-hero">
+      <h1 class="plans-title">Elige tu plan</h1>
+      <p class="plans-sub">
+        Accede a búsquedas inteligentes, conversión de libros y más.
+        Cancela cuando quieras.
+      </p>
+    </section>
+
+    <!-- Cards de planes -->
+    <section class="plans-grid" aria-label="Planes disponibles">
+
+      <!-- ── Plan Gratis ───────────────────────────────────── -->
+      <div class="plan-card">
+        <div class="plan-card-header">
+          <span class="plan-name">Gratis</span>
+          <div class="plan-price-block">
+            <span class="plan-price">$0</span>
+            <span class="plan-period">/ mes</span>
+          </div>
+          <p class="plan-tagline">Para explorar BookDork sin compromiso</p>
+        </div>
+
+        <ul class="plan-features" aria-label="Características del plan Gratis">
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Búsqueda ilimitada de libros
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Acceso a Internet Archive, Gutenberg y Open Library
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Google Dorks automáticos
+          </li>
+          <li class="plan-feat plan-feat--limit">
+            <span class="plan-feat-icon" aria-hidden="true">◎</span>
+            <strong>5 conversiones</strong> a Markdown por mes
+          </li>
+          <li class="plan-feat plan-feat--no">
+            <span class="plan-feat-icon" aria-hidden="true">✕</span>
+            Sin procesamiento prioritario
+          </li>
+          <li class="plan-feat plan-feat--no">
+            <span class="plan-feat-icon" aria-hidden="true">✕</span>
+            Sin soporte por correo
+          </li>
+          <li class="plan-feat plan-feat--no">
+            <span class="plan-feat-icon" aria-hidden="true">✕</span>
+            Sin acceso a The Info Vault
+          </li>
+        </ul>
+
+        <a href="/auth" class="plan-cta plan-cta--outline">Comenzar gratis</a>
+      </div>
+
+      <!-- ── Plan Basic ────────────────────────────────────── -->
+      <div class="plan-card">
+        <div class="plan-card-header">
+          <span class="plan-name plan-name--basic">Basic</span>
+          <div class="plan-price-block">
+            <span class="plan-price">$4.990</span>
+            <span class="plan-period">CLP / mes</span>
+          </div>
+          <p class="plan-tagline">Para lectores habituales y estudiantes</p>
+        </div>
+
+        <ul class="plan-features" aria-label="Características del plan Basic">
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Todo lo del plan Gratis
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            <strong>50 conversiones</strong> a Markdown por mes
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Archivos de hasta 50 MB
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Conversión en paralelo (hasta 5 documentos)
+          </li>
+          <li class="plan-feat plan-feat--limit">
+            <span class="plan-feat-icon" aria-hidden="true">◎</span>
+            Soporte por correo (respuesta en 48 h)
+          </li>
+          <li class="plan-feat plan-feat--no">
+            <span class="plan-feat-icon" aria-hidden="true">✕</span>
+            Sin procesamiento prioritario
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Acceso a <strong>The Info Vault</strong>
+          </li>
+        </ul>
+
+        <div class="plan-vault-note">
+          <strong>The Info Vault</strong> — biblioteca de libros convertidos a Markdown por la comunidad. Descarga al instante, sin re-procesar.
+        </div>
+        <a href="/auth" class="plan-cta plan-cta--outline">Elegir Basic</a>
+      </div>
+
+      <!-- ── Plan Pro ──────────────────────────────────────── -->
+      <div class="plan-card plan-card--featured">
+        <div class="plan-card-badge">Más popular</div>
+
+        <div class="plan-card-header">
+          <span class="plan-name plan-name--pro">Pro</span>
+          <div class="plan-price-block">
+            <span class="plan-price">$9.990</span>
+            <span class="plan-period">CLP / mes</span>
+          </div>
+          <p class="plan-tagline">Para investigadores y profesionales</p>
+        </div>
+
+        <ul class="plan-features" aria-label="Características del plan Pro">
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Todo lo del plan Basic
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Conversiones <strong>ilimitadas</strong> a Markdown
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Procesamiento prioritario (cola de alta prioridad)
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Archivos de hasta 200 MB
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Soporte por correo (respuesta en 24 h)
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Acceso anticipado a nuevas funciones
+          </li>
+          <li class="plan-feat plan-feat--yes">
+            <span class="plan-feat-icon" aria-hidden="true">✓</span>
+            Acceso a <strong>The Info Vault</strong>
+          </li>
+        </ul>
+
+        <a href="/auth" class="plan-cta plan-cta--primary">Elegir Pro</a>
+      </div>
+
+    </section>
+
+    <!-- Comparativa de características -->
+    <section class="plans-compare" aria-label="Tabla comparativa de planes">
+      <h2 class="plans-compare-title">Comparativa completa</h2>
+
+      <div class="plans-table-wrap">
+        <table class="plans-table" role="table">
+          <thead>
+            <tr>
+              <th scope="col" class="plans-th-feat">Característica</th>
+              <th scope="col" class="plans-th plans-th--free">Gratis</th>
+              <th scope="col" class="plans-th plans-th--basic">Basic</th>
+              <th scope="col" class="plans-th plans-th--pro">Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="plans-td-feat">Búsqueda de libros</td>
+              <td class="plans-td">Ilimitada</td>
+              <td class="plans-td">Ilimitada</td>
+              <td class="plans-td">Ilimitada</td>
+            </tr>
+            <tr>
+              <td class="plans-td-feat">Conversiones a Markdown / mes</td>
+              <td class="plans-td">5</td>
+              <td class="plans-td">50</td>
+              <td class="plans-td plans-td--highlight">Ilimitadas</td>
+            </tr>
+            <tr>
+              <td class="plans-td-feat">Tamaño máximo de archivo</td>
+              <td class="plans-td">50 MB</td>
+              <td class="plans-td">50 MB</td>
+              <td class="plans-td plans-td--highlight">200 MB</td>
+            </tr>
+            <tr>
+              <td class="plans-td-feat">Archivos en paralelo</td>
+              <td class="plans-td">1</td>
+              <td class="plans-td">5</td>
+              <td class="plans-td plans-td--highlight">5</td>
+            </tr>
+            <tr>
+              <td class="plans-td-feat">Procesamiento prioritario</td>
+              <td class="plans-td plans-td--no">—</td>
+              <td class="plans-td plans-td--no">—</td>
+              <td class="plans-td plans-td--highlight">✓</td>
+            </tr>
+            <tr>
+              <td class="plans-td-feat">Soporte por correo</td>
+              <td class="plans-td plans-td--no">—</td>
+              <td class="plans-td">48 h</td>
+              <td class="plans-td plans-td--highlight">24 h</td>
+            </tr>
+            <tr>
+              <td class="plans-td-feat">The Info Vault</td>
+              <td class="plans-td plans-td--no">—</td>
+              <td class="plans-td plans-td--highlight">✓</td>
+              <td class="plans-td plans-td--highlight">✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FAQ breve -->
+    <section class="plans-faq" aria-label="Preguntas frecuentes">
+      <h2 class="plans-faq-title">Preguntas frecuentes</h2>
+      <div class="plans-faq-grid">
+        <div class="faq-item">
+          <p class="faq-q">¿Puedo cambiar de plan después?</p>
+          <p class="faq-a">Sí. Puedes subir o bajar de plan en cualquier momento. El cambio se aplica al inicio del siguiente período de facturación.</p>
+        </div>
+        <div class="faq-item">
+          <p class="faq-q">¿Qué formatos admite el convertidor?</p>
+          <p class="faq-a">PDF, EPUB, MOBI, AZW3, DjVu y TXT. El resultado es Markdown limpio, ideal para LLMs y toma de notas.</p>
+        </div>
+        <div class="faq-item">
+          <p class="faq-q">¿Los libros se almacenan en el servidor?</p>
+          <p class="faq-a">No. Los archivos se procesan en memoria y se eliminan inmediatamente después de la conversión. No guardamos copias.</p>
+        </div>
+        <div class="faq-item">
+          <p class="faq-q">¿Cómo se realiza el pago?</p>
+          <p class="faq-a">Los pagos se procesan con Stripe de forma segura. Aceptamos tarjetas de crédito y débito (Visa, Mastercard).</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>BookDork — Solo libros de dominio público y uso legal.</p>
+    <div id="user-menu" class="footer-user-menu"></div>
+  </footer>
+
+  <script type="module" src="/static/auth-guard.js"></script>
+</body>
+</html>

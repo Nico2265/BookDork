@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookDork – Busca libros digitales en la web" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>BookDork — Buscador de Libros</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/auth.css" />
+</head>
+
+<body>
+
+  <!-- Overlay mientras se verifica la sesión -->
+  <div id="auth-loading" class="auth-loading-overlay" aria-hidden="true">
+    <div class="auth-loading-spinner"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/" class="logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <a href="/converter" class="header-tool-link" aria-label="Abrir convertidor Markdown">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+        </svg>
+        Convertidor MD
+      </a>
+      <div class="header-stats" id="header-stats" aria-live="polite">
+        <span class="stat-badge" id="stat-indexed">
+          <span class="stat-dot"></span>
+          <span class="stat-label">Estado del servidor</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main id="main-content">
+
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 class="hero-title" id="hero-title">
+        Encuentra cualquier libro
+      </h1>
+      <p class="hero-sub">Busca por título, autor o ISBN — resultados directos en tu pantalla</p>
+
+      <form id="search-form" class="search-form" role="search" aria-label="Buscar libros" novalidate>
+        <div class="search-bar-wrapper">
+          <div class="search-input-group">
+            <span class="search-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input
+              type="search" id="search-query" name="q"
+              class="search-input" placeholder="Título, autor, ISBN…"
+              autocomplete="off" autocorrect="off" spellcheck="false"
+              maxlength="512" aria-label="Buscar libros" required
+            />
+            <span class="search-spinner" id="search-spinner" aria-hidden="true" hidden>
+              <svg class="spinner-svg" viewBox="0 0 24 24">
+                <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke-width="3"/>
+              </svg>
+            </span>
+            <button type="button" id="clear-btn" class="search-clear-btn" aria-label="Limpiar" hidden>✕</button>
+          </div>
+          <button type="submit" class="search-btn" aria-label="Buscar">Buscar</button>
+        </div>
+
+        <details class="filters-panel" id="filters-panel">
+          <summary class="filters-toggle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            Filtros
+            <span class="filters-count-badge" id="filters-badge" hidden>0</span>
+          </summary>
+          <div class="filters-grid" role="group" aria-label="Filtros de búsqueda">
+            <div class="filter-group">
+              <label class="filter-label" for="filter-filetype">Formato</label>
+              <select id="filter-filetype" name="filetype" class="filter-select">
+                <option value="any">Todos</option>
+                <option value="pdf">PDF</option>
+                <option value="epub">EPUB</option>
+                <option value="mobi">MOBI</option>
+                <option value="djvu">DjVu</option>
+                <option value="azw3">AZW3</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label" for="filter-site">Fuente</label>
+              <select id="filter-site" name="site" class="filter-select">
+                <option value="any">Todas</option>
+                <option value="archive.org">Internet Archive</option>
+                <option value="gutenberg.org">Project Gutenberg</option>
+                <option value="openlibrary.org">Open Library</option>
+                <option value="pdfdrive.com">PDF Drive</option>
+                <option value="books.google.com">Google Books</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label" for="filter-language">Idioma</label>
+              <select id="filter-language" name="language" class="filter-select">
+                <option value="any">Todos</option>
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="pt">Português</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label" for="filter-author">Autor</label>
+              <input type="text" id="filter-author" name="author" class="filter-input"
+                placeholder="Nombre del autor" maxlength="150" autocomplete="off"/>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label" for="filter-isbn">ISBN</label>
+              <input type="text" id="filter-isbn" name="isbn" class="filter-input"
+                placeholder="978-0-00-000000-0" maxlength="20"/>
+            </div>
+          </div>
+        </details>
+      </form>
+    </section>
+
+    <!-- RESULTADOS -->
+    <section class="results-section" id="results-section" aria-live="polite" hidden>
+      <div class="results-meta">
+        <span id="results-count" class="results-count"></span>
+        <span id="results-time" class="results-time"></span>
+        <span class="results-source-tag" id="results-source-tag" hidden></span>
+      </div>
+
+      <div class="suggestions-bar" id="suggestions-bar" hidden>
+        <span class="suggestions-label">¿Quisiste decir?</span>
+        <div class="suggestions-list" id="suggestions-list"></div>
+      </div>
+
+      <div class="results-grid" id="results-grid" role="list"></div>
+
+      <div class="empty-state" id="empty-state" hidden>
+        <div class="empty-icon">📭</div>
+        <h2>Sin resultados</h2>
+        <p>No encontramos coincidencias. Intenta con otro término o busca directamente en Google.</p>
+        <a class="btn-google-search" id="empty-dork-btn" href="#" target="_blank" rel="noopener noreferrer">
+          Buscar en Google
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      </div>
+
+      <nav class="pagination" id="pagination" aria-label="Paginación" hidden>
+        <button class="page-btn" id="prev-page" disabled>← Anterior</button>
+        <span class="page-indicator" id="page-indicator"></span>
+        <button class="page-btn" id="next-page">Siguiente →</button>
+      </nav>
+    </section>
+
+    <!-- ESTADO INICIAL -->
+    <section class="welcome-section" id="welcome-section">
+      <p class="welcome-hint">Escribe el nombre de un libro, autor o ISBN para comenzar</p>
+    </section>
+
+  </main>
+
+  <!-- TEMPLATE TARJETA -->
+  <template id="book-card-template">
+    <article class="book-card" role="listitem">
+      <div class="book-cover-wrap">
+        <img class="book-cover" src="" alt="" loading="lazy" />
+      </div>
+      <div class="book-body">
+        <div class="book-meta-row">
+          <span class="book-filetype-badge"></span>
+          <span class="book-lang-badge"></span>
+          <span class="book-source-badge"></span>
+          <span class="book-year"></span>
+        </div>
+        <h2 class="book-title"></h2>
+        <p class="book-author"></p>
+        <div class="book-description"></div>
+        <div class="book-tags"></div>
+        <footer class="book-card-footer">
+          <span class="book-isbn"></span>
+          <div class="book-find-group">
+            <a class="btn-find" href="#" target="_blank" rel="noopener noreferrer">
+              Buscar PDF
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+            <a class="btn-find-alt" href="#" target="_blank" rel="noopener noreferrer" title="Búsqueda amplia en páginas de descarga">
+              Web
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </a>
+          </div>
+        </footer>
+      </div>
+    </article>
+  </template>
+
+  <!-- FOOTER -->
+  <footer class="site-footer" role="contentinfo">
+    <p>BookDork — Solo libros de dominio público y uso legal.</p>
+    <div id="user-menu" class="footer-user-menu"></div>
+  </footer>
+
+  <script type="module" src="/static/ui.js"></script>
+  <script type="module" src="/static/search.js"></script>
+  <script type="module" src="/static/auth-guard.js"></script>
+</body>
+</html>

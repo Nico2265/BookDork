@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookDork — Inicia sesión o crea tu cuenta" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>BookDork — Acceso</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/auth.css" />
+</head>
+<body class="auth-body">
+
+  <!-- Layout dividido -->
+  <div class="auth-layout">
+
+    <!-- ── Panel izquierdo: marca ─────────────────────────── -->
+    <aside class="auth-brand" aria-hidden="true">
+      <div class="auth-brand-inner">
+
+        <div class="auth-brand-logo">
+          <img src="/static/logo.png" alt="BookDork" width="80" height="80">
+        </div>
+
+        <h1 class="auth-brand-headline">
+          Encuentra cualquier<br>libro en la web
+        </h1>
+
+        <p class="auth-brand-desc">
+          Búsqueda inteligente con Google Dorks, catálogos abiertos
+          y conversión de documentos a Markdown — todo en un solo lugar.
+        </p>
+
+        <ul class="auth-brand-features">
+          <li>
+            <span class="auth-feat-icon">◈</span>
+            Búsqueda por título, autor o ISBN
+          </li>
+          <li>
+            <span class="auth-feat-icon">◈</span>
+            Acceso a Internet Archive, Gutenberg y más
+          </li>
+          <li>
+            <span class="auth-feat-icon">◈</span>
+            Convertidor PDF · EPUB · MOBI a Markdown
+          </li>
+        </ul>
+
+        <a href="/plans" class="auth-brand-plans">
+          Ver planes y precios
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </a>
+
+      </div>
+
+      <!-- Decoración de fondo -->
+      <div class="auth-brand-deco" aria-hidden="true">
+        <div class="auth-deco-ring auth-deco-ring--1"></div>
+        <div class="auth-deco-ring auth-deco-ring--2"></div>
+        <div class="auth-deco-ring auth-deco-ring--3"></div>
+      </div>
+    </aside>
+
+    <!-- ── Panel derecho: formulario ─────────────────────── -->
+    <main class="auth-form-panel">
+      <div class="auth-form-inner">
+
+        <!-- Logo móvil (visible solo en pantallas pequeñas) -->
+        <a href="/" class="auth-mobile-logo" aria-label="BookDork inicio">
+          <span>📚</span>
+          Book<em>Dork</em>
+        </a>
+
+        <!-- Cabecera del formulario -->
+        <div class="auth-form-header">
+          <h2 class="auth-form-title" id="auth-form-title">Iniciar sesión</h2>
+          <p class="auth-form-sub" id="auth-form-sub">Bienvenido de nuevo a BookDork</p>
+        </div>
+
+        <!-- Toggle principal: Ingresar / Registrarse -->
+        <div class="auth-toggle" role="tablist" aria-label="Modo de acceso">
+          <button class="auth-toggle-btn active" id="btn-login"
+                  role="tab" aria-selected="true">
+            Ingresar
+          </button>
+          <button class="auth-toggle-btn" id="btn-register"
+                  role="tab" aria-selected="false">
+            Crear cuenta
+          </button>
+        </div>
+
+        <!-- Selector de método: Correo / Teléfono -->
+        <div class="auth-method" role="tablist" aria-label="Método de autenticación">
+          <button class="auth-method-btn active" id="tab-email"
+                  role="tab" aria-selected="true" aria-controls="panel-email">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <polyline points="2,4 12,13 22,4"/>
+            </svg>
+            Correo
+          </button>
+          <button class="auth-method-btn" id="tab-phone"
+                  role="tab" aria-selected="false" aria-controls="panel-phone">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="5" y="2" width="14" height="20" rx="2"/>
+              <line x1="12" y1="18" x2="12" y2="18.01"/>
+            </svg>
+            Teléfono
+          </button>
+        </div>
+
+        <!-- Mensaje de estado -->
+        <div id="email-msg" hidden role="alert"></div>
+        <div id="phone-msg" hidden role="alert"></div>
+
+        <!-- ── Panel Correo ───────────────────────────────── -->
+        <div id="panel-email" role="tabpanel" aria-labelledby="tab-email">
+
+          <!-- Paso 1: credenciales -->
+          <div id="email-step-1">
+            <div class="auth-field">
+              <label class="auth-label" for="email-input">Correo electrónico</label>
+              <input type="email" id="email-input" class="auth-input"
+                     placeholder="nombre@correo.com"
+                     autocomplete="email" />
+            </div>
+
+            <div class="auth-field">
+              <label class="auth-label" for="password-input">Contraseña</label>
+              <div class="auth-input-wrap">
+                <input type="password" id="password-input" class="auth-input"
+                       placeholder="Mínimo 6 caracteres"
+                       autocomplete="current-password" />
+                <button type="button" class="auth-eye-btn" id="toggle-password"
+                        aria-label="Mostrar contraseña">
+                  <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Teléfono — solo en modo registro -->
+            <div id="phone-section-email" hidden>
+              <div class="auth-field-divider">
+                <span>Verificación por teléfono</span>
+              </div>
+              <div class="auth-field">
+                <label class="auth-label" for="email-phone-number">Número de teléfono</label>
+                <div class="auth-phone-row">
+                  <input type="text" id="email-phone-prefix" class="auth-input auth-phone-prefix"
+                         value="+56" maxlength="5" autocomplete="tel-country-code" />
+                  <input type="tel" id="email-phone-number" class="auth-input"
+                         placeholder="912 345 678" maxlength="15" autocomplete="tel-national" />
+                </div>
+              </div>
+              <button class="auth-submit auth-submit--secondary" id="send-otp-email-btn" type="button">
+                Enviar código de verificación
+              </button>
+            </div>
+
+            <!-- Botón login (modo ingresar) -->
+            <div id="login-section-email">
+              <button class="auth-submit" id="email-login-btn" type="button">
+                Continuar
+              </button>
+            </div>
+          </div>
+
+          <!-- Paso 2: OTP (solo registro) -->
+          <div id="email-step-2" hidden>
+            <div class="auth-otp-info">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.37a2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              Código enviado a <strong id="email-otp-phone-display"></strong>
+            </div>
+            <div class="auth-field">
+              <label class="auth-label" for="email-otp-input">Código de verificación</label>
+              <input type="text" id="email-otp-input" class="auth-input auth-otp-input"
+                     placeholder="• • • • • •" maxlength="6"
+                     inputmode="numeric" autocomplete="one-time-code" />
+            </div>
+            <button class="auth-submit" id="email-register-btn" type="button">
+              Crear cuenta
+            </button>
+            <button class="auth-link-btn" id="email-otp-back-btn" type="button">
+              ← Volver
+            </button>
+          </div>
+
+        </div>
+        <!-- /panel-email -->
+
+        <!-- ── Panel Teléfono ─────────────────────────────── -->
+        <div id="panel-phone" role="tabpanel" aria-labelledby="tab-phone" hidden>
+
+          <!-- Paso 1: número -->
+          <div id="phone-step-1">
+            <div class="auth-field">
+              <label class="auth-label" for="phone-number">Número de teléfono</label>
+              <div class="auth-phone-row">
+                <input type="text" id="phone-prefix" class="auth-input auth-phone-prefix"
+                       value="+56" maxlength="5" autocomplete="tel-country-code" />
+                <input type="tel" id="phone-number" class="auth-input"
+                       placeholder="912 345 678" maxlength="15" autocomplete="tel-national" />
+              </div>
+            </div>
+            <button class="auth-submit" id="send-phone-otp-btn" type="button">
+              Enviar código SMS
+            </button>
+            <p class="auth-hint">
+              Recibirás un SMS con un código de 6 dígitos. Si no tienes cuenta, se creará automáticamente.
+            </p>
+          </div>
+
+          <!-- Paso 2: OTP -->
+          <div id="phone-step-2" hidden>
+            <div class="auth-otp-info">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.37a2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              Código enviado a <strong id="phone-otp-display"></strong>
+            </div>
+            <div class="auth-field">
+              <label class="auth-label" for="phone-otp-input">Código de verificación</label>
+              <input type="text" id="phone-otp-input" class="auth-input auth-otp-input"
+                     placeholder="• • • • • •" maxlength="6"
+                     inputmode="numeric" autocomplete="one-time-code" />
+            </div>
+            <button class="auth-submit" id="verify-phone-btn" type="button">
+              Verificar y acceder
+            </button>
+            <button class="auth-link-btn" id="phone-otp-back-btn" type="button">
+              ← Volver
+            </button>
+          </div>
+
+        </div>
+        <!-- /panel-phone -->
+
+        <!-- Pie del formulario -->
+        <div class="auth-form-footer">
+          <a href="/plans" class="auth-plans-link">
+            Ver planes y precios
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+
+      </div>
+    </main>
+    <!-- /auth-form-panel -->
+
+  </div>
+  <!-- /auth-layout -->
+
+  <!-- reCAPTCHA invisible de Firebase -->
+  <div id="recaptcha-container" class="recaptcha-hidden"></div>
+
+  <script type="module" src="/static/auth.js"></script>
+</body>
+</html>

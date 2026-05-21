@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookDork – Convierte libros digitales a Markdown" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>BookDork — Convertidor Markdown</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/converter.css" />
+  <link rel="stylesheet" href="/static/auth.css" />
+</head>
+
+<body>
+  <div id="auth-loading" class="auth-loading-overlay" aria-hidden="true">
+    <div class="auth-loading-spinner"></div>
+  </div>
+
+  <!-- Decoración de fondo -->
+  <div class="cv-bg-decoration" aria-hidden="true">
+    <div class="cv-bg-orb cv-bg-orb--gold"></div>
+    <div class="cv-bg-orb cv-bg-orb--purple"></div>
+  </div>
+
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/" class="logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <a href="/search" class="cv-back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Buscador
+      </a>
+    </div>
+  </header>
+
+  <main id="main-content" class="cv-main">
+
+    <!-- BANNER DE PLAN -->
+    <div class="cv-plan-banner" id="plan-banner" hidden>
+      <div class="cv-plan-info">
+        <span class="cv-plan-tag" id="plan-tag">Gratis</span>
+        <span class="cv-plan-usage" id="plan-usage"></span>
+      </div>
+      <button class="cv-upgrade-btn" id="upgrade-btn" type="button">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+        Mejorar plan
+      </button>
+    </div>
+
+    <!-- VAULT BANNER -->
+    <a href="/vault" class="cv-vault-banner" aria-label="Visitar The Info Vault — biblioteca de libros convertidos">
+      <span class="cv-vault-banner__icon" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </span>
+      <span class="cv-vault-banner__text">
+        <strong>The Info Vault</strong> — Descarga libros ya convertidos a Markdown
+      </span>
+      <span class="cv-vault-banner__badge">Basic · Pro</span>
+      <svg class="cv-vault-banner__arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+
+    <!-- HERO -->
+    <section class="cv-hero">
+      <div class="cv-hero-badge">
+        <span class="cv-hero-badge-dot" aria-hidden="true"></span>
+        Impulsado por MarkItDown · Microsoft
+      </div>
+      <h1 class="cv-hero-title">
+        Convertidor <span class="cv-title-accent">Markdown</span>
+      </h1>
+      <p class="cv-hero-sub">
+        Transforma tus libros al formato que las IAs entienden mejor — hasta 80% menos tokens, mismo contenido.
+      </p>
+      <div class="cv-hero-metrics" role="list" aria-label="Métricas del convertidor">
+        <div class="cv-metric" role="listitem">
+          <span class="cv-metric-val">6</span>
+          <span class="cv-metric-lbl">formatos</span>
+        </div>
+        <div class="cv-metric-div" aria-hidden="true"></div>
+        <div class="cv-metric" role="listitem">
+          <span class="cv-metric-val">−80%</span>
+          <span class="cv-metric-lbl">tokens IA</span>
+        </div>
+        <div class="cv-metric-div" aria-hidden="true"></div>
+        <div class="cv-metric" role="listitem">
+          <span class="cv-metric-val">5</span>
+          <span class="cv-metric-lbl">en paralelo</span>
+        </div>
+        <div class="cv-metric-div" aria-hidden="true"></div>
+        <div class="cv-metric" role="listitem">
+          <span class="cv-metric-val" id="file-size-metric">50 MB</span>
+          <span class="cv-metric-lbl">máx. archivo</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- DROPZONE -->
+    <section class="cv-upload-section">
+      <div class="cv-dropzone" id="dropzone" role="button" tabindex="0"
+           aria-label="Zona de arrastre. Arrastra hasta 5 archivos o presiona Enter para seleccionar">
+        <input type="file" id="file-input" class="cv-file-input"
+               accept=".pdf,.epub,.mobi,.azw3,.djvu,.txt"
+               multiple aria-label="Seleccionar archivos" />
+
+        <div class="cv-dz-idle" id="dz-idle">
+          <div class="cv-dz-icon" aria-hidden="true">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="cv-dz-title">Arrastra tus libros aquí</p>
+          <p class="cv-dz-sub">o haz clic para seleccionar — hasta 5 documentos</p>
+          <div class="cv-formats" role="list" aria-label="Formatos aceptados">
+            <span class="cv-fmt" data-type="pdf"  role="listitem">PDF</span>
+            <span class="cv-fmt" data-type="epub" role="listitem">EPUB</span>
+            <span class="cv-fmt" data-type="mobi" role="listitem">MOBI</span>
+            <span class="cv-fmt" data-type="azw3" role="listitem">AZW3</span>
+            <span class="cv-fmt" data-type="djvu" role="listitem">DjVu</span>
+            <span class="cv-fmt" data-type="txt"  role="listitem">TXT</span>
+          </div>
+          <p class="cv-dz-hint" id="dz-hint">Máx. 50 MB por archivo · Conversión en paralelo · Descarga individual o ZIP</p>
+        </div>
+
+        <div class="cv-dz-hover" id="dz-hover" hidden aria-hidden="true">
+          <div class="cv-dz-icon cv-dz-icon--drop">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="cv-dz-title">Suelta para añadir</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- LISTA DE ARCHIVOS SELECCIONADOS -->
+    <section class="cv-queue-section" id="queue-section" hidden>
+      <div class="cv-queue-header">
+        <span class="cv-queue-title">
+          Cola de conversión
+          <span class="cv-queue-count" id="queue-count">0 / 5</span>
+        </span>
+        <button class="cv-btn-ghost cv-btn-sm" id="add-more-btn" type="button">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Añadir más
+        </button>
+      </div>
+      <ul class="cv-file-list" id="file-list" role="list" aria-label="Archivos en cola"></ul>
+      <p class="cv-queue-estimate" id="queue-estimate" aria-live="polite"></p>
+      <div class="cv-queue-actions">
+        <button class="cv-btn-ghost cv-btn-sm" id="clear-all-btn" type="button">Limpiar todo</button>
+        <button class="cv-convert-btn" id="convert-btn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M5 3l14 9-14 9V3z"/>
+          </svg>
+          <span id="convert-label">Convertir</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- PROGRESO -->
+    <section class="cv-progress-section" id="progress-section" hidden aria-live="polite">
+      <div class="cv-steps" role="list" aria-label="Pasos del proceso">
+        <div class="cv-step" id="step-upload" role="listitem">
+          <div class="cv-step-dot"></div>
+          <span class="cv-step-label">Subiendo</span>
+        </div>
+        <div class="cv-step-line" aria-hidden="true"></div>
+        <div class="cv-step" id="step-convert" role="listitem">
+          <div class="cv-step-dot"></div>
+          <span class="cv-step-label">Convirtiendo</span>
+        </div>
+        <div class="cv-step-line" aria-hidden="true"></div>
+        <div class="cv-step" id="step-done" role="listitem">
+          <div class="cv-step-dot"></div>
+          <span class="cv-step-label">Listo</span>
+        </div>
+      </div>
+      <div class="cv-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+           id="progress-bar" aria-valuenow="0">
+        <div class="cv-progress-fill" id="progress-fill"></div>
+      </div>
+      <p class="cv-progress-label" id="progress-label">Preparando…</p>
+    </section>
+
+    <!-- RESULTADOS -->
+    <section class="cv-results-section" id="results-section" hidden>
+      <div class="cv-results-header">
+        <div class="cv-results-meta">
+          <span class="cv-results-title" id="results-title">Conversiones completadas</span>
+          <span class="cv-results-sub" id="results-sub"></span>
+        </div>
+        <div class="cv-results-actions">
+          <button class="cv-btn-ghost cv-btn-sm" id="new-conversion-btn" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+            </svg>
+            Nueva conversión
+          </button>
+          <button class="cv-btn-primary" id="download-all-btn" type="button" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar todo (.zip)
+          </button>
+        </div>
+      </div>
+      <div class="cv-result-cards" id="result-cards" role="list"></div>
+    </section>
+
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>BookDork — Conversión impulsada por
+      <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener noreferrer" class="cv-footer-link">MarkItDown</a>
+      de Microsoft
+    </p>
+    <div id="user-menu" class="footer-user-menu"></div>
+  </footer>
+
+  <!-- TEMPLATE: tarjeta de resultado -->
+  <template id="result-card-tpl">
+    <article class="cv-result-card" role="listitem">
+      <div class="cv-rc-header">
+        <div class="cv-rc-status-wrap">
+          <span class="cv-rc-status-icon" aria-hidden="true"></span>
+        </div>
+        <div class="cv-rc-info">
+          <span class="cv-rc-name"></span>
+          <span class="cv-rc-stats"></span>
+        </div>
+        <span class="cv-rc-token-badge" hidden>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+          <span class="cv-rc-token-count"></span>&nbsp;tokens
+        </span>
+        <div class="cv-rc-actions">
+          <button class="cv-btn-secondary cv-btn-sm cv-rc-copy-btn" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copiar
+          </button>
+          <button class="cv-rc-dl-btn" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar .md
+          </button>
+        </div>
+      </div>
+      <!-- Información del libro vía ISBN (Open Library) -->
+      <div class="cv-rc-book-meta" hidden>
+        <img class="cv-rc-cover" src="" alt="Portada" loading="lazy" />
+        <div class="cv-rc-meta-body">
+          <p class="cv-rc-meta-desc"></p>
+          <div class="cv-rc-meta-row">
+            <span class="cv-rc-meta-pub"></span>
+            <a class="cv-rc-meta-link" href="#" target="_blank" rel="noopener noreferrer">Ver en Open Library ↗</a>
+          </div>
+          <div class="cv-rc-meta-subjects"></div>
+        </div>
+      </div>
+      <details class="cv-rc-preview-wrap">
+        <summary class="cv-rc-preview-toggle">Vista previa del Markdown</summary>
+        <pre class="cv-rc-preview" tabindex="0"></pre>
+        <p class="cv-rc-preview-note" hidden>Vista previa truncada — el archivo descargado contiene el documento completo.</p>
+      </details>
+    </article>
+  </template>
+
+  <!-- MODAL DE UPGRADE -->
+  <div class="cv-modal-overlay" id="upgrade-modal" hidden role="dialog" aria-modal="true"
+       aria-labelledby="upgrade-modal-title">
+    <div class="cv-modal">
+      <div class="cv-modal-header">
+        <h2 class="cv-modal-title" id="upgrade-modal-title">Mejora tu plan</h2>
+        <p class="cv-modal-sub">Convierte más archivos a Markdown con un plan premium.</p>
+      </div>
+      <div class="cv-modal-plans">
+        <div class="cv-plan-option" id="opt-basic"
+             role="button" tabindex="0" aria-label="Seleccionar plan Basic">
+          <div class="cv-plan-option-header">
+            <span class="cv-plan-option-name">Basic</span>
+            <span class="cv-plan-option-price">$5 <small>/ mes</small></span>
+          </div>
+          <p class="cv-plan-option-desc">50 conversiones diarias · Ideal para uso frecuente</p>
+        </div>
+        <div class="cv-plan-option" id="opt-pro"
+             role="button" tabindex="0" aria-label="Seleccionar plan Pro">
+          <div class="cv-plan-option-header">
+            <span class="cv-plan-option-name">Pro</span>
+            <span class="cv-plan-option-badge">Recomendado</span>
+            <span class="cv-plan-option-price">$50 <small>/ mes</small></span>
+          </div>
+          <p class="cv-plan-option-desc">200 conversiones diarias · Para equipos y uso intensivo</p>
+        </div>
+      </div>
+      <button class="cv-modal-cta" id="upgrade-cta-btn" type="button">
+        Suscribirse a Basic — $5/mes
+      </button>
+      <button class="cv-modal-close" id="upgrade-modal-close" type="button">Cerrar</button>
+    </div>
+  </div>
+
+  <script type="module" src="/static/converter.js"></script>
+  <script type="module" src="/static/auth-guard.js"></script>
+</body>
+</html>

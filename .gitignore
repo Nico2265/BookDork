@@ -1,0 +1,70 @@
+# ── Secretos y configuración sensible ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Credenciales Firebase ──────────────────────────────────────────────────────
+*.json
+!package.json
+*.firebase/
+firebase-debug.log
+
+# ── Certificados TLS ──────────────────────────────────────────────────────────
+certs/
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx
+
+# ── Caché de conversiones (documentos de usuarios) ────────────────────────────
+conversion_cache/
+
+# ── Bases de datos ────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.pytest_cache/
+htmlcov/
+.coverage
+*.cover
+.mypy_cache/
+.ruff_cache/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Sistema operativo ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Archivos temporales ───────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+
+# ── Binarios y archivos grandes ───────────────────────────────────────────────
+*.exe
+*.msix
+*.zip
+data.ms/

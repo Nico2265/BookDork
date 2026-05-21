@@ -1,0 +1,322 @@
+/*
+ * ============================================================
+ * animations.css — Animaciones de BookDork
+ * Micro-interacciones y transiciones de interfaz
+ * Respeta prefers-reduced-motion
+ * ============================================================
+ */
+
+/* ── Keyframes base ───────────────────────────────────────────────────────── */
+
+/* Rotación infinita (spinner) */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Entrada desde abajo con fade */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Entrada desde arriba con fade */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade simple */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Pulso suave (stat dot de estado) */
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px currentColor; }
+  50%       { opacity: 0.5; box-shadow: 0 0 12px currentColor; }
+}
+
+/* Shimmer para skeleton loading */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Parpadeo del cursor de búsqueda */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Aparición con escala */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Deslizamiento lateral */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Escritura (typewriter) para el texto del dork */
+@keyframes typewriter {
+  from { max-width: 0; }
+  to   { max-width: 100%; }
+}
+
+/* Brillo dorado (hover glow) */
+@keyframes goldPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 83, 0); }
+  50%       { box-shadow: 0 0 20px 4px rgba(212, 168, 83, 0.2); }
+}
+
+/* Partícula flotante */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+  33%       { transform: translateY(-20px) rotate(120deg); opacity: 0.8; }
+  66%       { transform: translateY(-10px) rotate(240deg); opacity: 0.5; }
+}
+
+/* ── Clases de animación ──────────────────────────────────────────────────── */
+
+/* Aplicar al hero al cargar la página */
+.hero-title-group {
+  animation: fadeInDown 0.8s var(--ease-out-expo) both;
+}
+
+.search-form {
+  animation: fadeInUp 0.9s 0.15s var(--ease-out-expo) both;
+}
+
+.welcome-section .feature-card:nth-child(1) { animation: fadeInUp 0.7s 0.1s var(--ease-out-expo) both; }
+.welcome-section .feature-card:nth-child(2) { animation: fadeInUp 0.7s 0.2s var(--ease-out-expo) both; }
+.welcome-section .feature-card:nth-child(3) { animation: fadeInUp 0.7s 0.3s var(--ease-out-expo) both; }
+.welcome-section .feature-card:nth-child(4) { animation: fadeInUp 0.7s 0.4s var(--ease-out-expo) both; }
+
+/* Estadísticas del header */
+.header-stats { animation: fadeIn 1s 0.5s both; }
+
+/* Punto de estado activo */
+.stat-dot {
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+/* ── Tarjetas de resultado ────────────────────────────────────────────────── */
+
+/* Las tarjetas aparecen en cascada al cargar resultados */
+.book-card {
+  animation: fadeInUp 0.5s var(--ease-out-expo) both;
+}
+
+/* Retraso escalonado para los primeros 8 resultados */
+.book-card:nth-child(1)  { animation-delay: 0.00s; }
+.book-card:nth-child(2)  { animation-delay: 0.05s; }
+.book-card:nth-child(3)  { animation-delay: 0.10s; }
+.book-card:nth-child(4)  { animation-delay: 0.15s; }
+.book-card:nth-child(5)  { animation-delay: 0.20s; }
+.book-card:nth-child(6)  { animation-delay: 0.25s; }
+.book-card:nth-child(7)  { animation-delay: 0.30s; }
+.book-card:nth-child(8)  { animation-delay: 0.35s; }
+
+/* ── Dork Preview ─────────────────────────────────────────────────────────── */
+
+.dork-preview[hidden="false"],
+.dork-preview:not([hidden]) {
+  animation: scaleIn 0.35s var(--ease-out-expo) both;
+}
+
+/* Efecto typewriter en el código Dork */
+.dork-code {
+  overflow: hidden;
+  white-space: nowrap;
+  /* Se activa dinámicamente vía JS añadiendo clase .is-typing */
+}
+
+.dork-code.is-typing {
+  animation: typewriter 0.6s steps(60) both;
+}
+
+/* ── Panel de filtros ─────────────────────────────────────────────────────── */
+
+/* Cuando se abre el details/summary */
+.filters-panel[open] .filters-grid {
+  animation: fadeInDown 0.3s var(--ease-out-expo);
+}
+
+/* ── Skeletons de carga ───────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    var(--bg-overlay) 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  color: transparent !important;
+}
+
+/* Tarjeta esqueleto completa */
+.book-card--skeleton {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  min-height: 240px;
+  animation: fadeIn 0.3s both;
+}
+
+.book-card--skeleton .skel-line {
+  height: 12px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+.book-card--skeleton .skel-title {
+  height: 20px;
+  width: 80%;
+  margin-bottom: var(--space-3);
+}
+.book-card--skeleton .skel-author {
+  height: 14px;
+  width: 50%;
+  margin-bottom: var(--space-4);
+}
+.book-card--skeleton .skel-desc {
+  height: 60px;
+  width: 100%;
+  margin-bottom: var(--space-4);
+}
+.book-card--skeleton .skel-actions {
+  height: 32px;
+  width: 40%;
+  margin-left: auto;
+}
+
+/* ── Efecto copia exitosa ─────────────────────────────────────────────────── */
+@keyframes copySuccess {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.copy-success {
+  animation: copySuccess 0.3s var(--ease-out-expo);
+  color: var(--green-main) !important;
+  border-color: var(--green-main) !important;
+}
+
+/* ── Barra de búsqueda — foco con glow ───────────────────────────────────── */
+.search-input-group:focus-within {
+  animation: goldPulse 2s ease-in-out infinite;
+}
+
+/* ── Notificación toast ───────────────────────────────────────────────────── */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+  }
+}
+
+/* Contenedor de toasts */
+#toast-container {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  animation: toastIn 0.4s var(--ease-out-expo) both;
+  max-width: 320px;
+}
+
+.toast--success {
+  border-color: rgba(76, 175, 130, 0.3);
+  color: var(--green-main);
+}
+
+.toast--error {
+  border-color: rgba(220, 80, 80, 0.3);
+  color: #e07070;
+}
+
+.toast.is-hiding {
+  animation: toastOut 0.3s var(--ease-in-out) both;
+}
+
+/* ── Preferencia reducción de movimiento ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hero-title-group,
+  .search-form,
+  .welcome-section .feature-card,
+  .header-stats,
+  .book-card,
+  .dork-preview:not([hidden]),
+  .filters-panel[open] .filters-grid,
+  .toast {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .stat-dot { animation: none; }
+  .dork-code.is-typing { animation: none; white-space: normal; max-width: none; }
+}

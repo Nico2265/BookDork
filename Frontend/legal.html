@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Aviso Legal — BookDork. Condiciones de uso, limitación de responsabilidad y política de propiedad intelectual." />
+  <meta name="robots" content="index, follow" />
+  <title>Aviso Legal — BookDork</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/landing.css?v=3" />
+
+  <style>
+    /* ── Layout principal ── */
+    .legal-page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 120px 32px 80px;
+    }
+
+    /* ── Encabezado ── */
+    .legal-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 32px;
+      margin-bottom: 48px;
+    }
+    .legal-header__eyebrow {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .legal-header h1 {
+      font-family: var(--font-title);
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      color: var(--text-1);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+    .legal-header__meta {
+      font-size: 0.82rem;
+      color: var(--text-2);
+    }
+
+    /* ── Aviso destacado ── */
+    .legal-notice {
+      background: rgba(201,150,90,0.07);
+      border: 1px solid rgba(201,150,90,0.22);
+      border-radius: var(--r-lg);
+      padding: 20px 24px;
+      margin-bottom: 48px;
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+    .legal-notice strong { color: var(--gold); }
+
+    /* ── Secciones ── */
+    .legal-section {
+      margin-bottom: 44px;
+    }
+    .legal-section h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-section h2 span {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .legal-section p {
+      color: var(--text-2);
+      font-size: 0.9rem;
+      line-height: 1.75;
+      margin-bottom: 12px;
+    }
+    .legal-section p:last-child { margin-bottom: 0; }
+    .legal-section strong { color: var(--text-1); font-weight: 600; }
+    .legal-section a {
+      color: var(--gold);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* ── Lista legal ── */
+    .legal-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 12px;
+    }
+    .legal-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: var(--text-2);
+      font-size: 0.9rem;
+      line-height: 1.65;
+      margin-bottom: 8px;
+    }
+    .legal-list li::before {
+      content: '—';
+      color: var(--gold);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Bloque exención ── */
+    .legal-disclaimer-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: var(--r-md);
+      padding: 20px 24px;
+      margin-top: 14px;
+    }
+    .legal-disclaimer-box p {
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+
+    /* ── Contacto ── */
+    .legal-contact {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: var(--r-lg);
+      padding: 24px;
+      margin-top: 48px;
+      text-align: center;
+    }
+    .legal-contact p {
+      color: var(--text-2);
+      font-size: 0.88rem;
+      margin-bottom: 6px;
+    }
+    .legal-contact a {
+      color: var(--gold);
+      font-weight: 500;
+      text-underline-offset: 3px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .legal-page { padding: 100px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── NAVEGACIÓN ── -->
+  <nav class="l-nav" role="navigation" aria-label="Navegación principal">
+    <div class="l-nav__inner">
+      <a href="/" class="l-nav__logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <ul class="l-nav__center" role="list">
+        <li><a href="/search" class="l-nav__link">Buscador de Libros</a></li>
+        <li><a href="/converter" class="l-nav__link">Convertidor a MD</a></li>
+        <li><a href="/plans" class="l-nav__link">Planes</a></li>
+      </ul>
+      <a href="/auth?next=/" id="nav-auth-btn" class="l-nav__auth">Ingresar / Registrarse</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="legal-page">
+
+      <!-- Encabezado -->
+      <header class="legal-header">
+        <span class="legal-header__eyebrow">Documentación legal</span>
+        <h1>Aviso Legal y Condiciones de Uso</h1>
+        <p class="legal-header__meta">
+          Última actualización: mayo de 2026 &nbsp;·&nbsp; Versión 1.0
+        </p>
+      </header>
+
+      <!-- Aviso rápido -->
+      <div class="legal-notice" role="note">
+        <strong>Resumen ejecutivo:</strong> BookDork es un <strong>generador de consultas de búsqueda</strong>.
+        No almacena, distribuye, reproduce ni facilita la descarga de ningún contenido protegido por derechos de
+        autor. Toda búsqueda se ejecuta en Google, un motor de terceros fuera del control de BookDork.
+        El usuario es el único responsable del uso que haga de los resultados obtenidos.
+      </div>
+
+      <!-- 1. Identidad -->
+      <section class="legal-section" aria-labelledby="s1">
+        <h2 id="s1"><span>01</span>Identidad del servicio</h2>
+        <p>
+          <strong>BookDork</strong> ("la Plataforma") es un servicio de búsqueda de información bibliográfica
+          que opera mediante la generación automatizada de consultas avanzadas para motores de búsqueda
+          públicos, en particular Google Search. La Plataforma no actúa como biblioteca digital, repositorio
+          de archivos ni proveedor de contenidos de ningún tipo.
+        </p>
+        <p>
+          El acceso y uso de la Plataforma implica la aceptación plena e incondicional de las presentes
+          condiciones. Quien no esté de acuerdo deberá abstenerse de utilizar el servicio.
+        </p>
+      </section>
+
+      <!-- 2. Qué son los Google Dorks -->
+      <section class="legal-section" aria-labelledby="s2">
+        <h2 id="s2"><span>02</span>Naturaleza técnica de las consultas — Google Dorks</h2>
+        <p>
+          Las búsquedas generadas por BookDork utilizan <strong>operadores avanzados de Google</strong>
+          (técnica conocida como <em>Google Dorking</em>). Se trata de una funcionalidad documentada y
+          pública del motor de búsqueda Google, que permite refinar resultados mediante operadores como
+          <code>filetype:</code>, <code>site:</code>, <code>intitle:</code> o <code>inurl:</code>.
+        </p>
+        <p>
+          Esta técnica es ampliamente utilizada en contextos legítimos y reconocidos, entre los que se incluyen:
+        </p>
+        <ul class="legal-list">
+          <li>Investigación académica y periodística.</li>
+          <li>Ciberseguridad defensiva y auditorías de seguridad autorizadas.</li>
+          <li>Inteligencia competitiva y análisis de mercado.</li>
+          <li>Localización de recursos de dominio público y acceso abierto.</li>
+        </ul>
+        <p>
+          BookDork utiliza esta técnica <strong>exclusivamente</strong> para ayudar a los usuarios a
+          localizar obras de dominio público, publicaciones académicas de acceso abierto y materiales
+          con licencias que permiten su libre difusión. Las consultas generadas <strong>no acceden,
+          copian ni transmiten</strong> ningún archivo: únicamente construyen una URL de búsqueda que
+          el usuario puede abrir voluntariamente en su navegador.
+        </p>
+      </section>
+
+      <!-- 3. Ausencia de alojamiento -->
+      <section class="legal-section" aria-labelledby="s3">
+        <h2 id="s3"><span>03</span>Ausencia de alojamiento y distribución de contenido</h2>
+        <p>
+          BookDork <strong>no aloja, almacena, reproduce, transmite ni distribuye</strong> ningún
+          archivo, documento o contenido protegido por derechos de autor o de cualquier otra naturaleza.
+        </p>
+        <p>
+          Los resultados de búsqueda apuntan a recursos alojados en servidores de terceros
+          (p.&nbsp;ej., <em>archive.org</em>, <em>gutenberg.org</em>, <em>openlibrary.org</em>) sobre
+          los cuales BookDork no ejerce ningún control editorial, técnico ni legal. La Plataforma actúa
+          como mero <strong>intermediario técnico de búsqueda</strong>, equivalente a cualquier motor de
+          búsqueda público.
+        </p>
+        <div class="legal-disclaimer-box">
+          <p>
+            En virtud de lo anterior, BookDork no puede ser considerado responsable de la naturaleza,
+            exactitud, legalidad ni disponibilidad de los contenidos a los que apuntan los resultados de búsqueda,
+            de conformidad con los principios de responsabilidad de intermediarios reconocidos en la
+            legislación de la Unión Europea (Directiva 2000/31/CE), la legislación chilena (Ley 20.435
+            sobre propiedad intelectual) y el régimen de <em>safe harbor</em> establecido en la DMCA
+            de los Estados Unidos (17 U.S.C. § 512).
+          </p>
+        </div>
+      </section>
+
+      <!-- 4. Propiedad intelectual -->
+      <section class="legal-section" aria-labelledby="s4">
+        <h2 id="s4"><span>04</span>Propiedad intelectual y derechos de autor</h2>
+        <p>
+          BookDork respeta los derechos de propiedad intelectual y no promueve, facilita ni tolera
+          el acceso a contenidos protegidos sin autorización de sus titulares. El servicio está diseñado
+          para orientar búsquedas hacia:
+        </p>
+        <ul class="legal-list">
+          <li>Obras en <strong>dominio público</strong> (cuyo plazo de protección ha expirado conforme a la legislación aplicable).</li>
+          <li>Publicaciones bajo <strong>licencias Creative Commons</strong> u otras licencias abiertas que permiten la redistribución.</li>
+          <li>Contenido de <strong>acceso abierto</strong> (<em>open access</em>) publicado por instituciones académicas o científicas.</li>
+          <li>Materiales distribuidos libremente por sus propios autores o titulares de derechos.</li>
+        </ul>
+        <p>
+          El usuario acepta que es su responsabilidad verificar el estado de derechos de autor de cualquier
+          obra antes de descargarla, reproducirla o distribuirla. La generación de una consulta de búsqueda
+          por parte de BookDork no constituye en ningún caso una declaración de que el contenido encontrado
+          sea de libre uso.
+        </p>
+      </section>
+
+      <!-- 5. Responsabilidad del usuario -->
+      <section class="legal-section" aria-labelledby="s5">
+        <h2 id="s5"><span>05</span>Responsabilidad y obligaciones del usuario</h2>
+        <p>El usuario se compromete a:</p>
+        <ul class="legal-list">
+          <li>Utilizar la Plataforma exclusivamente para localizar contenido cuyo uso esté autorizado por la ley o por el titular de los derechos.</li>
+          <li>No emplear las consultas generadas para acceder a sistemas informáticos sin autorización, vulnerar medidas de protección tecnológica ni realizar actividades tipificadas como delito en la legislación vigente.</li>
+          <li>No reproducir, redistribuir ni comercializar contenidos protegidos por derechos de autor sin contar con la debida autorización.</li>
+          <li>Asumir plena responsabilidad civil y penal derivada del uso que haga de los resultados obtenidos a través de la Plataforma.</li>
+        </ul>
+        <p>
+          BookDork se reserva el derecho de suspender o cancelar el acceso de cualquier usuario que
+          utilice el servicio de forma contraria a estas condiciones, sin previo aviso y sin derecho
+          a reembolso de ningún tipo.
+        </p>
+      </section>
+
+      <!-- 6. Limitación de responsabilidad -->
+      <section class="legal-section" aria-labelledby="s6">
+        <h2 id="s6"><span>06</span>Limitación de responsabilidad</h2>
+        <p>
+          En la máxima medida permitida por la ley aplicable, BookDork queda exento de toda
+          responsabilidad por:
+        </p>
+        <ul class="legal-list">
+          <li>Daños directos, indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso de la Plataforma.</li>
+          <li>La inexactitud, desactualización o indisponibilidad de los resultados de búsqueda.</li>
+          <li>El contenido publicado en sitios web de terceros a los que apuntan los resultados.</li>
+          <li>La infracción de derechos de propiedad intelectual cometida por el usuario al acceder a contenidos de terceros.</li>
+          <li>Interrupciones del servicio por causas técnicas, de mantenimiento o de fuerza mayor.</li>
+          <li>Daños, pérdidas o compromisos de seguridad causados por <strong>malware, virus, ransomware u otro software malicioso</strong> que el usuario pudiera encontrar al acceder a sitios web de terceros a los que apunten las rutas de búsqueda generadas por la Plataforma. Las consultas producidas por BookDork son sugerencias técnicas que dirigen al usuario hacia resultados indexados por motores de búsqueda externos; BookDork no verifica, analiza ni garantiza la seguridad informática de los sitios enlazados. El usuario accede a dichos sitios bajo su exclusiva responsabilidad y se recomienda el uso de software antivirus actualizado y prácticas de navegación segura.</li>
+        </ul>
+      </section>
+
+      <!-- 7. Notificación de infracciones -->
+      <section class="legal-section" aria-labelledby="s7">
+        <h2 id="s7"><span>07</span>Notificación de infracciones de propiedad intelectual</h2>
+        <p>
+          Si eres titular de derechos de autor o su representante autorizado y consideras que algún
+          resultado generado por BookDork facilita el acceso a contenido que infringe tus derechos,
+          puedes notificárnoslo mediante el correo indicado al final de este documento.
+        </p>
+        <p>
+          La notificación deberá incluir: identificación de la obra supuestamente infringida, identificación
+          del resultado concreto que señalas, tus datos de contacto y una declaración de buena fe.
+          BookDork procesará la solicitud con la debida diligencia.
+        </p>
+      </section>
+
+      <!-- 8. Modificaciones -->
+      <section class="legal-section" aria-labelledby="s8">
+        <h2 id="s8"><span>08</span>Modificaciones del aviso legal</h2>
+        <p>
+          BookDork se reserva el derecho de modificar el presente aviso legal en cualquier momento.
+          Los cambios entrarán en vigor desde su publicación en esta página. El uso continuado de la
+          Plataforma tras la publicación de modificaciones constituye la aceptación de las nuevas condiciones.
+        </p>
+      </section>
+
+      <!-- 9. Ley aplicable -->
+      <section class="legal-section" aria-labelledby="s9">
+        <h2 id="s9"><span>09</span>Ley aplicable y jurisdicción</h2>
+        <p>
+          El presente aviso legal se rige por la legislación de la República de Chile, en particular
+          la <strong>Ley N.º 17.336 de Propiedad Intelectual</strong> y sus modificaciones. Para
+          cualquier controversia derivada del uso de la Plataforma, las partes se someten a la
+          jurisdicción de los tribunales ordinarios de justicia de Santiago de Chile, con renuncia
+          expresa a cualquier otro fuero que pudiera corresponderles.
+        </p>
+      </section>
+
+      <!-- Contacto -->
+      <div class="legal-contact">
+        <p>Consultas legales, notificaciones de infracción y solicitudes de supresión:</p>
+        <a href="mailto:legal@bookdork.com">legal@bookdork.com</a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── FOOTER ── -->
+  <footer class="l-footer" role="contentinfo">
+    <div class="l-footer__inner">
+      <a href="/" class="l-nav__logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <nav class="l-footer__nav" aria-label="Navegación del pie de página">
+        <a href="/search">Buscador de Libros</a>
+        <a href="/converter">Convertidor a MD</a>
+        <a href="/plans">Planes</a>
+        <a href="/auth">Ingresar</a>
+        <a href="/legal" aria-current="page">Aviso Legal</a>
+      </nav>
+      <p class="l-footer__copy">© 2026 BookDork — Solo libros de dominio público y uso legal.</p>
+    </div>
+  </footer>
+
+  <script type="module" src="/static/landing.js"></script>
+</body>
+</html>

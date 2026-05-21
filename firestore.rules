@@ -1,0 +1,69 @@
+// =============================================================================
+// firestore.rules — Reglas de seguridad de Firestore para BookDork
+// =============================================================================
+//
+// INSTRUCCIONES DE DESPLIEGUE:
+//   1. Firebase Console → tu proyecto → Firestore Database → Rules
+//   2. Reemplaza el contenido actual con estas reglas y haz clic en "Publicar"
+//
+// ALTERNATIVA (Firebase CLI):
+//   firebase deploy --only firestore:rules
+//
+// CORRECCIÓN CRIT-01:
+//   La regla anterior (`allow read, write`) permitía que cualquier usuario
+//   autenticado escribiera directamente su documento, incluyendo los campos
+//   'plan', 'conversiones' y 'conversionesDiarias'. Esto permitía:
+//     - Upgradear el propio plan a 'pro' sin pagar (via Firebase SDK)
+//     - Resetear contadores de conversión a 0
+//   Estas reglas protegen esos campos: solo el Admin SDK del backend puede
+//   modificarlos. El cliente solo puede leer y crear el documento inicial.
+// =============================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Colección de usuarios ─────────────────────────────────────────────────
+    match /usuarios/{uid} {
+
+      // Lectura: solo el propio usuario
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Creación inicial (primer registro): solo si el documento no existe
+      // y los campos de conversión y plan son los valores por defecto.
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.plan == 'gratis'
+        && request.resource.data.conversiones == 0
+        && request.resource.data.conversionesDiarias == 0;
+
+      // Actualización: COMPLETAMENTE BLOQUEADA desde el cliente.
+      // El Admin SDK del backend (Python) es la única fuente autorizada de
+      // escritura sobre campos de plan y contadores de conversión.
+      allow update: if false;
+
+      // Eliminación: bloqueada
+      allow delete: if false;
+    }
+
+    // ── Colección de teléfonos (verificación de unicidad en registro) ─────────
+    match /phones/{phone} {
+      // Lectura pública: isPhoneTaken() se llama antes de que el usuario tenga
+      // sesión activa (durante el registro), por lo que no puede ser autenticada.
+      // Firestore no expone la colección completa — solo quien conozca un número
+      // exacto puede comprobar si está registrado.
+      allow read: if true;
+
+      // Escritura: solo el propio usuario autenticado puede registrar su número
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // ── Denegar todo lo demás por defecto ─────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

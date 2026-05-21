@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookDork — The Info Vault: libros convertidos a Markdown por la comunidad" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>BookDork — The Info Vault</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/auth.css" />
+  <link rel="stylesheet" href="/static/vault.css?v=2" />
+</head>
+<body>
+
+  <div id="auth-loading" class="auth-loading-overlay" aria-hidden="true">
+    <div class="auth-loading-spinner"></div>
+  </div>
+
+  <!-- Fondo decorativo -->
+  <div class="vlt-bg" aria-hidden="true">
+    <div class="vlt-bg-orb vlt-bg-orb--gold"></div>
+    <div class="vlt-bg-orb vlt-bg-orb--purple"></div>
+  </div>
+
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/" class="logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <nav class="vlt-header-nav" aria-label="Navegación">
+        <a href="/search" class="vlt-nav-link">Buscador</a>
+        <a href="/converter" class="vlt-nav-link">Convertidor</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="vlt-main">
+
+    <!-- ── PAYWALL (plan gratis) ──────────────────────────────────────────── -->
+    <div class="vlt-paywall" id="vlt-paywall" hidden>
+      <div class="vlt-paywall__icon" aria-hidden="true">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h1 class="vlt-paywall__title">The Info Vault</h1>
+      <p class="vlt-paywall__sub">
+        Biblioteca de libros convertidos a Markdown por la comunidad BookDork.
+        Disponible en planes <strong>Basic</strong> y <strong>Pro</strong>.
+      </p>
+      <div class="vlt-paywall__plans">
+        <div class="vlt-paywall__plan">
+          <span class="vlt-paywall__plan-name">Basic</span>
+          <span class="vlt-paywall__plan-price">$4.990 <small>CLP/mes</small></span>
+          <ul class="vlt-paywall__plan-feats">
+            <li>50 conversiones/mes</li>
+            <li>Acceso a The Info Vault</li>
+            <li>Archivos hasta 50 MB</li>
+          </ul>
+        </div>
+        <div class="vlt-paywall__plan vlt-paywall__plan--featured">
+          <span class="vlt-paywall__plan-badge">Más popular</span>
+          <span class="vlt-paywall__plan-name">Pro</span>
+          <span class="vlt-paywall__plan-price">$9.990 <small>CLP/mes</small></span>
+          <ul class="vlt-paywall__plan-feats">
+            <li>Conversiones ilimitadas</li>
+            <li>Acceso a The Info Vault</li>
+            <li>Archivos hasta 200 MB</li>
+          </ul>
+        </div>
+      </div>
+      <a href="/plans" class="vlt-paywall__cta">Ver planes y precios</a>
+      <p class="vlt-paywall__note">Sin compromiso · Cancela cuando quieras</p>
+    </div>
+
+    <!-- ── CONTENIDO PRINCIPAL ────────────────────────────────────────────── -->
+    <div class="vlt-content" id="vlt-content" hidden>
+
+      <!-- Hero -->
+      <section class="vlt-hero">
+        <div class="vlt-hero__left">
+          <div class="vlt-hero__eyebrow">
+            <span class="vlt-live-dot" aria-hidden="true"></span>
+            Actualizado en tiempo real
+          </div>
+          <h1 class="vlt-hero__title">
+            The Info <span class="vlt-hero__accent">Vault</span>
+          </h1>
+          <p class="vlt-hero__desc">
+            Libros reales convertidos a Markdown por la comunidad. Descarga al instante,
+            sin esperar re-procesamiento.
+          </p>
+        </div>
+        <div class="vlt-hero__stats" aria-label="Estadísticas del Vault">
+          <div class="vlt-stat">
+            <span class="vlt-stat__num" id="vlt-total-books">—</span>
+            <span class="vlt-stat__lbl">libros</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Filtros -->
+      <section class="vlt-filters" aria-label="Filtros de búsqueda">
+
+        <!-- Período -->
+        <div class="vlt-filter-row">
+          <div class="vlt-period-group" role="group" aria-label="Período">
+            <button class="vlt-period-btn vlt-period-btn--active" data-period="" type="button" aria-pressed="true">Todo</button>
+            <button class="vlt-period-btn" data-period="month" type="button" aria-pressed="false">Mes</button>
+            <button class="vlt-period-btn" data-period="biweek" type="button" aria-pressed="false">2 Semanas</button>
+            <button class="vlt-period-btn" data-period="week" type="button" aria-pressed="false">Semana</button>
+            <button class="vlt-period-btn" data-period="today" type="button" aria-pressed="false">Hoy</button>
+          </div>
+
+          <div class="vlt-selects">
+            <select class="vlt-select" id="vlt-year-select" aria-label="Filtrar por año">
+              <option value="">Todos los años</option>
+            </select>
+            <select class="vlt-select" id="vlt-edition-select" aria-label="Filtrar por edición">
+              <option value="">Todas las ediciones</option>
+              <option value="na">N/A (desconocida)</option>
+              <option value="1">1ª edición</option>
+              <option value="2">2ª edición</option>
+              <option value="3">3ª edición</option>
+              <option value="4">4ª edición</option>
+              <option value="5">5ª edición</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Chips de tema (valores = keys de classify_topic en conversion_cache.py) -->
+        <div class="vlt-chips" role="group" aria-label="Filtrar por tema">
+          <button class="vlt-chip vlt-chip--active" data-topic="" type="button">Todos</button>
+          <button class="vlt-chip" data-topic="ia" type="button">IA</button>
+          <button class="vlt-chip" data-topic="fisica" type="button">Física</button>
+          <button class="vlt-chip" data-topic="matematicas" type="button">Matemáticas</button>
+          <button class="vlt-chip" data-topic="programacion" type="button">Programación</button>
+          <button class="vlt-chip" data-topic="economia" type="button">Economía</button>
+          <button class="vlt-chip" data-topic="biologia" type="button">Biología</button>
+          <button class="vlt-chip" data-topic="historia" type="button">Historia</button>
+          <button class="vlt-chip" data-topic="psicologia" type="button">Psicología</button>
+          <button class="vlt-chip" data-topic="filosofia" type="button">Filosofía</button>
+          <button class="vlt-chip" data-topic="general" type="button">General</button>
+        </div>
+
+        <!-- Barra de stats -->
+        <div class="vlt-stats-bar" aria-live="polite" aria-atomic="true">
+          <span class="vlt-count-label" id="vlt-count-label"></span>
+          <span class="vlt-sort-label">↓ Más descargados primero</span>
+        </div>
+      </section>
+
+      <!-- Grid -->
+      <section class="vlt-grid-wrap">
+        <div class="vlt-grid" id="vlt-grid" role="list" aria-label="Libros en The Info Vault"></div>
+
+        <!-- Skeleton loader -->
+        <div class="vlt-skeletons" id="vlt-skeletons" aria-hidden="true">
+          <div class="vlt-skeleton"></div>
+          <div class="vlt-skeleton"></div>
+          <div class="vlt-skeleton"></div>
+          <div class="vlt-skeleton"></div>
+          <div class="vlt-skeleton"></div>
+          <div class="vlt-skeleton"></div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div class="vlt-empty" id="vlt-empty" hidden>
+          <div class="vlt-empty__icon" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <p class="vlt-empty__title">Vault vacío</p>
+          <p class="vlt-empty__sub">
+            No hay libros con estos filtros todavía.<br>
+            Sé el primero en convertir y contribuir.
+          </p>
+          <div class="vlt-empty__actions">
+            <button class="vlt-btn-ghost" id="vlt-reset-btn" type="button">Limpiar filtros</button>
+            <a href="/converter" class="vlt-btn-primary">Convertir un libro</a>
+          </div>
+        </div>
+
+        <!-- Error de carga -->
+        <div class="vlt-error" id="vlt-error" hidden>
+          <p class="vlt-error__text" id="vlt-error-msg">Error al cargar el Vault.</p>
+          <button class="vlt-btn-ghost" id="vlt-retry-btn" type="button">Reintentar</button>
+        </div>
+      </section>
+
+      <!-- Paginación -->
+      <div class="vlt-pagination" id="vlt-pagination" hidden>
+        <button class="vlt-btn-ghost" id="vlt-load-more" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+          </svg>
+          Cargar más
+        </button>
+      </div>
+
+    </div><!-- /vlt-content -->
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>BookDork — The Info Vault · Solo contenido de dominio público y uso legal.</p>
+    <div id="user-menu" class="footer-user-menu"></div>
+  </footer>
+
+  <!-- Modal de descarga -->
+  <div class="vlt-modal-overlay" id="vlt-dl-modal" hidden role="dialog" aria-modal="true"
+       aria-labelledby="vlt-dl-modal-title">
+    <div class="vlt-modal">
+      <div class="vlt-modal__header">
+        <h2 class="vlt-modal__title" id="vlt-dl-modal-title">Descargando…</h2>
+        <button class="vlt-modal__close" id="vlt-dl-modal-close" type="button" aria-label="Cerrar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <p class="vlt-modal__book-title" id="vlt-dl-modal-book"></p>
+      <div class="vlt-modal__progress">
+        <div class="vlt-modal__progress-fill" id="vlt-dl-progress"></div>
+      </div>
+      <p class="vlt-modal__status" id="vlt-dl-status">Preparando…</p>
+    </div>
+  </div>
+
+  <script type="module" src="/static/vault.js?v=2"></script>
+  <script type="module" src="/static/auth-guard.js"></script>
+</body>
+</html>
