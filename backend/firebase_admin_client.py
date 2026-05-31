@@ -28,6 +28,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore as fb_firestore
 
 from .config import get_settings
+from .firebase_auth import Role, resolve_role
 
 logger = logging.getLogger("bookdork.firebase_admin")
 
@@ -250,3 +251,86 @@ async def update_user_conversions(uid: str, fields: dict) -> None:
         _get_db().collection(_COLLECTION).document(uid).set(fields, merge=True)
 
     await asyncio.to_thread(_write)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RBAC — Gestión de roles administrativos (Firebase custom claims)
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def get_user_role(uid: str) -> Role:
+    """
+    Devuelve el rol administrativo del usuario leyendo sus custom claims.
+    Un usuario sin claim 'role' es Role.USER (sin privilegios admin).
+
+    Raises:
+        ValueError    si el usuario no existe en Firebase Auth.
+        RuntimeError  si el Admin SDK no está inicializado.
+    """
+    record = await get_user_by_uid(uid)
+    return resolve_role((record.custom_claims or {}).get("role"))
+
+
+async def set_user_role(
+    uid: str,
+    new_role: Role,
+    changed_by: str,
+    revoke_sessions: bool = True,
+) -> dict:
+    """
+    Asigna un rol administrativo a un usuario vía custom claims del Admin SDK.
+
+    El claim 'role' se incrusta en los futuros Firebase ID tokens del usuario y
+    es verificado localmente por el backend (require_admin_access). Esto sustituye
+    a la clave admin compartida por una identidad individual, auditable y revocable.
+
+    Detalles de diseño:
+      • Preserva cualquier otro custom claim ya presente (no los pisa).
+      • Role.USER se modela como AUSENCIA del claim 'role' (limpieza, no "user").
+      • revoke_sessions=True invalida los refresh tokens para forzar re-login y
+        que el nuevo claim se propague. Nota de propagación: un ID token ya emitido
+        sigue siendo válido hasta su expiración (≤1 h); por eso, al RETIRAR
+        privilegios existe una ventana de ≤1 h en la que el token viejo aún
+        contiene el rol anterior. Para revocación inmediata, además de revocar
+        sesiones habría que verificar el estado de revocación contra el Admin SDK
+        en cada request (no implementado por su coste; ≤1 h es aceptable aquí).
+
+    Args:
+        uid:             UID del usuario objetivo.
+        new_role:        Rol a asignar.
+        changed_by:      Identidad del actor (para auditoría).
+        revoke_sessions: Si True, revoca refresh tokens tras el cambio.
+
+    Returns:
+        dict con 'role_anterior' y 'role_nuevo' (ambos Role).
+
+    Raises:
+        ValueError    si el usuario no existe en Firebase Auth.
+        RuntimeError  si el Admin SDK no está inicializado.
+    """
+    app    = _get_app()
+    record = await get_user_by_uid(uid)  # valida existencia (ValueError si no)
+    existing  = dict(record.custom_claims or {})
+    prev_role = resolve_role(existing.get("role"))
+
+    def _write() -> None:
+        new_claims = dict(existing)
+        if new_role == Role.USER:
+            new_claims.pop("role", None)        # 'user' = sin claim
+        else:
+            new_claims["role"] = new_role.value
+        # set_custom_user_claims acepta None para borrar todos los claims; si el
+        # dict queda vacío pasamos None para no almacenar un objeto vacío.
+        fb_auth.set_custom_user_claims(uid, new_claims or None, app=app)
+        if revoke_sessions:
+            fb_auth.revoke_refresh_tokens(uid, app=app)
+
+    await asyncio.to_thread(_write)
+
+    logger.info(
+        "AUDIT set_role — uid=%s role_anterior=%s role_nuevo=%s changed_by=%s",
+        uid[:8],
+        prev_role.value,
+        new_role.value,
+        changed_by,
+    )
+    return {"role_anterior": prev_role, "role_nuevo": new_role}

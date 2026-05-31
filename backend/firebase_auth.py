@@ -23,12 +23,78 @@ import time
 from typing import NamedTuple, Optional
 
 import httpx
+from enum import Enum
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import get_settings
 
 logger = logging.getLogger("bookdork.firebase_auth")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RBAC — Roles administrativos (custom claims de Firebase)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# El rol vive en el claim "role" del Firebase ID token (custom claim establecido
+# por el backend vía Admin SDK). La verificación es puramente local: el JWT ya
+# está firmado por Google y se valida en verify_firebase_token(), por lo que el
+# claim "role" es de confianza una vez verificada la firma.
+#
+# Jerarquía lineal: un rol superior hereda todos los permisos de los inferiores.
+#   user (0)  <  support (1)  <  billing (2)  <  superadmin (3)
+#
+# Mapa de permisos (ver matriz en DEPLOY_SECURITY.md):
+#   support     → leer cualquier usuario
+#   billing     → support + cambiar planes
+#   superadmin  → billing + reindexar / cache / gestionar roles
+#
+# La ausencia de claim equivale a "user" (sin privilegios admin) — esto hace que
+# todos los usuarios existentes sigan siendo usuarios normales sin migración.
+
+class Role(str, Enum):
+    USER       = "user"
+    SUPPORT    = "support"
+    BILLING    = "billing"
+    SUPERADMIN = "superadmin"
+
+    @classmethod
+    def values(cls) -> list[str]:
+        return [r.value for r in cls]
+
+
+_ROLE_LEVEL: dict[Role, int] = {
+    Role.USER:       0,
+    Role.SUPPORT:    1,
+    Role.BILLING:    2,
+    Role.SUPERADMIN: 3,
+}
+
+
+def role_level(role: Role) -> int:
+    """Nivel jerárquico del rol (mayor = más privilegio)."""
+    return _ROLE_LEVEL[role]
+
+
+def resolve_role(value: object) -> Role:
+    """
+    Convierte un valor arbitrario (claim del token, dato legacy, None) en un
+    Role válido. Cualquier valor desconocido o ausente degrada a Role.USER,
+    de modo que un claim corrupto NUNCA concede privilegios (fail-closed).
+    """
+    if isinstance(value, Role):
+        return value
+    if not value:
+        return Role.USER
+    try:
+        return Role(str(value).strip().lower())
+    except ValueError:
+        return Role.USER
+
+
+def has_min_role(role: Role, minimum: Role) -> bool:
+    """True si `role` satisface o supera el nivel `minimum`."""
+    return role_level(role) >= role_level(minimum)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Caché JWKS (claves públicas RSA de Firebase)
