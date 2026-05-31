@@ -1,0 +1,56 @@
+# =============================================================================
+# requirements.txt — Dependencias Python de BookDork
+# =============================================================================
+# Instalar con:
+#   pip install -r requirements.txt
+#
+# HTTP/3 (QUIC) ya incluido vía hypercorn[h3] + aioquic.
+# OCR GPU (easyocr/torch) es OPCIONAL — ver sección al final.
+# =============================================================================
+
+# ── Framework web ─────────────────────────────────────────────────────────────
+fastapi==0.115.5              # Framework ASGI moderno con validación automática
+pydantic==2.10.3              # Validación de datos con Python type hints
+pydantic-settings==2.6.1      # Carga de configuración desde .env
+
+# ── Servidor ASGI con HTTP/3 (QUIC) ───────────────────────────────────────────
+hypercorn[h3]==0.18.0         # Servidor ASGI — HTTP/1.1, HTTP/2 y HTTP/3 (QUIC)
+aioquic==1.3.0                # Implementación QUIC/TLS 1.3 (requiere Python >=3.10)
+
+# ── Motor de búsqueda Meilisearch ─────────────────────────────────────────────
+meilisearch==0.31.5           # SDK oficial Python para Meilisearch
+
+# ── Seguridad y utilidades ────────────────────────────────────────────────────
+python-dotenv==1.0.1          # Carga de variables de entorno desde .env
+cryptography>=43.0.3          # TLS/criptografía — aioquic requiere >=42
+PyJWT[crypto]>=2.9.0          # Verificación de Firebase ID tokens RS256
+psutil>=5.9.0                 # Afinidad CPU por proceso (pin workers a núcleos)
+
+# ── Subida y conversión de archivos ───────────────────────────────────────────
+python-multipart>=0.0.9       # Soporte multipart/form-data para subida de archivos
+markitdown[pdf]==0.1.5        # Conversión PDF/EPUB/TXT→Markdown (fallback)
+pymupdf>=1.24.0               # Extracción de texto PDF — 10-50× más rápido que pdfminer
+
+# ── Motor STEM de alta fidelidad (stem_engine / glyph recovery) ───────────────
+ftfy>=6.2.0                   # Reparación de mojibake y normalización Unicode
+pylatexenc>=2.10              # Parser LaTeX para notación matemática
+fonttools>=4.50.0             # Lectura de nombres de glifo (glyph_name_recovery, font_harvester)
+numpy>=1.24.0                 # Matching visual de siluetas (font_recovery) + OCR
+
+# ── Utilidades de idioma / red ────────────────────────────────────────────────
+langdetect>=1.0.9             # Detección de idioma ISO 639-1 para IDs de caché
+httpx>=0.27.0                 # Cliente HTTP async (proxy server-side a openlibrary.org)
+
+# ── Firebase Admin SDK ────────────────────────────────────────────────────────
+firebase-admin>=6.5.0         # Operaciones privilegiadas: Auth + Firestore
+email-validator>=2.1.0        # Requerido por Pydantic EmailStr (admin_routes)
+
+# ── OCR GPU (OPCIONAL — instalar manualmente para activar CUDA) ───────────────
+# Descomenta y ejecuta:  pip install easyocr torch torchvision
+# easyocr>=1.7.2              # OCR para PDFs escaneados (NVIDIA RTX 3060 Ti vía CUDA)
+# torch>=2.0.0               # PyTorch — detecta GPU automáticamente
+# torchvision>=0.15.0        # Requerido por EasyOCR
+
+# ── Testing (desarrollo) ──────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0

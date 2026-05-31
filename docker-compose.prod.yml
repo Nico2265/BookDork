@@ -14,7 +14,10 @@ services:
     volumes:
       - meilisearch_data:/meili_data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      # La imagen oficial de Meilisearch (base Alpine) NO trae curl, sí wget
+      # (busybox). Con curl el check fallaba siempre y bookdork (depends_on
+      # meili healthy) nunca arrancaba → stack completo caído.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7700/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,8 +25,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '0.5'
+          memory: 1G          # 512M era escaso para el índice bajo carga
+          cpus: '1.0'
 
   bookdork:
     build:
@@ -35,18 +38,43 @@ services:
       DEBUG: "false"
       MEILI_HOST: "http://meilisearch:7700"
       MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
+      # Clave de solo búsqueda (actions=['search']) creada en Meilisearch
+      # vía POST /keys con la master key. Si está vacía, el cliente cae al
+      # master key como fallback (funcional pero menos seguro: el principio
+      # de mínimo privilegio recomienda usar siempre la search key en prod).
+      MEILI_SEARCH_API_KEY: "${MEILI_SEARCH_API_KEY:-}"
       ADMIN_API_KEY: "${ADMIN_API_KEY}"
       HTTP3_PORT: "8000"
       APP_DOMAIN: "${APP_DOMAIN}"
+      # Caddy es el único proxy delante → la IP real del cliente es la última
+      # entrada de X-Forwarded-For. SIN esto el rate limiter agrupa a TODOS los
+      # clientes bajo la IP de Caddy (un solo bucket de 30/min global).
+      TRUSTED_PROXY_DEPTH: "1"
+      # Procesos HTTP. 1 = seguro en cualquier host. Para escalar verticalmente
+      # subir a 2-4 SOLO si el host tiene cores suficientes y HTTP_CPU_CORES /
+      # CONVERT_CPU_CORES (config.py) siguen siendo disjuntos. El entrypoint ya
+      # honra este valor (main.__main__ → cfg.workers).
+      HTTP_WORKERS: "1"
     depends_on:
       meilisearch:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      # python:3.12-slim NO trae curl → usamos urllib (siempre presente).
+      # Con curl el healthcheck fallaba siempre y Caddy (depends_on healthy)
+      # nunca arrancaba.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health',timeout=4).status==200 else 1)"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          # Techo de RAM: cubre conversiones concurrentes (CONVERT_MAX_CONCURRENT)
+          # + modelo OCR en RAM/VRAM. Evita que un PDF grande tumbe el host.
+          memory: 4G
+        reservations:
+          memory: 1G
 
   caddy:
     image: caddy:2-alpine

@@ -29,13 +29,26 @@ service cloud.firestore {
       // Lectura: solo el propio usuario
       allow read: if request.auth != null && request.auth.uid == uid;
 
-      // Creación inicial (primer registro): solo si el documento no existe
-      // y los campos de conversión y plan son los valores por defecto.
+      // Creación inicial (primer registro): solo si el documento no existe,
+      // los campos de conversión y plan son los valores por defecto, y
+      // no se escriben campos fuera de la whitelist (evita campos arbitrarios).
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.plan == 'gratis'
         && request.resource.data.conversiones == 0
-        && request.resource.data.conversionesDiarias == 0;
+        && request.resource.data.conversionesDiarias == 0
+        && request.resource.data.keys().hasOnly(
+             ['plan', 'conversiones', 'conversionesDiarias',
+              'email', 'displayName', 'phone', 'createdAt'])
+        && (!('email' in request.resource.data)
+             || (request.resource.data.email is string
+                 && request.resource.data.email.size() <= 320))
+        && (!('displayName' in request.resource.data)
+             || (request.resource.data.displayName is string
+                 && request.resource.data.displayName.size() <= 100))
+        && (!('phone' in request.resource.data)
+             || (request.resource.data.phone is string
+                 && request.resource.data.phone.size() <= 20));
 
       // Actualización: COMPLETAMENTE BLOQUEADA desde el cliente.
       // El Admin SDK del backend (Python) es la única fuente autorizada de
@@ -54,9 +67,11 @@ service cloud.firestore {
       // exacto puede comprobar si está registrado.
       allow read: if true;
 
-      // Escritura: solo el propio usuario autenticado puede registrar su número
+      // Escritura: solo el propio usuario autenticado puede registrar su número.
+      // Solo se permite el campo 'uid'; nada más.
       allow create: if request.auth != null
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid']);
 
       allow update, delete: if false;
     }

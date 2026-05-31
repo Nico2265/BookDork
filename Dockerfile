@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libssl-dev libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY Frontend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
@@ -23,8 +23,11 @@ RUN groupadd -r bookdork && useradd -r -g bookdork bookdork
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-COPY ["Pyton Backend/", "./backend/"]
-COPY Frontend/ ./frontend/
+COPY ["backend/", "./backend/"]
+# IMPORTANTE: 'Frontend' con F mayúscula — el código busca parent.parent/"Frontend"
+# (main.py). En Linux (case-sensitive) una carpeta 'frontend' minúscula NO se
+# encontraría y el frontend devolvería 404.
+COPY Frontend/ ./Frontend/
 
 RUN chown -R bookdork:bookdork /app
 

@@ -43,9 +43,9 @@ def _err(msg):  _line(_ERR,  msg)
 def _info(msg): _line(_INFO, msg)
 
 
-# ── Alias de paquete: "Pyton Backend" -> importable como "backend" ────────────
+# ── Alias de paquete: "backend" -> importable como "backend" ────────────
 ROOT        = Path(__file__).parent
-BACKEND_DIR = ROOT / "Pyton Backend"
+BACKEND_DIR = ROOT / "backend"
 
 _pkg             = types.ModuleType("backend")
 _pkg.__path__    = [str(BACKEND_DIR)]
@@ -248,7 +248,7 @@ def start_server() -> None:
         print()
         cmd = [
             sys.executable, "-m", "uvicorn",
-            "Pyton Backend.main:app",
+            "backend.main:app",
             "--reload",
             "--port", str(port),
             "--host", "127.0.0.1",
@@ -273,7 +273,21 @@ def start_server() -> None:
     cfg.loglevel = "debug" if ENV.get("DEBUG", "").lower() == "true" else "info"
     cfg.accesslog = "-"
     cfg.errorlog  = "-"
-    cfg.workers   = 1
+    # HTTP_WORKERS proviene de Settings (.env). Cada worker abre su propio pool
+    # de conversión dimensionado a CONVERT_MAX_CONCURRENT/N y toma afinidad de
+    # un slot único (ver main.py lifespan). Validación de cores en config.py
+    # garantiza que no haya solape con CONVERT_CPU_CORES.
+    cfg.workers   = max(1, settings.HTTP_WORKERS)
+    if cfg.workers > 1:
+        _info(f"Multi-worker: {cfg.workers} procesos HTTP "
+              f"(cores {settings.HTTP_CPU_CORES}, conversión en {settings.CONVERT_CPU_CORES})")
+        # Limpia el lockfile de slots de arranques previos para evitar stale entries.
+        _slot_file = ROOT / ".bookdork_http_slots"
+        try:
+            if _slot_file.exists():
+                _slot_file.unlink()
+        except OSError:
+            pass
 
     has_certs = cert.exists() and key.exists()
 

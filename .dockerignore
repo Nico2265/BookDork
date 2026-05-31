@@ -1,0 +1,31 @@
+# Mantiene el contexto de build pequeño y evita hornear secretos/datos en la imagen.
+.git
+.gitignore
+.claude
+
+# Secretos y certificados — NUNCA en la imagen
+.env
+.env.*
+certs/
+*.key
+*.crt
+*.pem
+
+# Datos en runtime (se montan como volúmenes, no van en la imagen)
+data.ms/
+conversion_cache/
+*.mdb
+.bookdork_http_slots
+
+# Artefactos y caches
+__pycache__/
+*.pyc
+.pytest_cache/
+Frontend/dist/        # se reconstruye con build_assets.py si se desea
+
+# Material que no necesita el runtime
+tests/
+loadtest/
+archive/
+*.md
+*.zip
