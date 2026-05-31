@@ -1,0 +1,45 @@
+==============================================================================
+FONT HARVESTER — inventario de fuentes rotas
+==============================================================================
+PDFs procesados OK : 34
+PDFs descartados   : 0
+Familias de fuente : 430  (30 sospechosas)
+Glifos SILENCIOSOS : 14,844   (corrupción que engaña)
+Glifos control     : 237,335   (marcados/recuperables)
+
+COBERTURA ZIPF de glifos silenciosos (nº de fuentes para cubrir X%):
+    50%  →  2 fuentes
+    80%  →  4 fuentes
+    95%  →  6 fuentes
+    99%  →  10 fuentes
+
+TOP 30 FUENTES por glifos silenciosos:
+   familia                          subtype   enc         2Uni   silent    ctrl name? struct?
+   MathematicalPi-Five              Type1                 yes     5,493   2,820 Y     .      
+   MathematicalPi-Three             Type1                 NO      3,130  37,846 Y     .      
+   PBB2k                            Type1                 NO      2,061       6 .     Y      
+   MathematicalPi-One               Type1                 NO      1,914 189,607 Y     Y      
+   Grk                              Type1     WinAnsiEnco NO      1,133      96 Y     Y      
+   Universal-NewswithCommPi         Type1                 NO        436     214 .     Y      
+   MathematicalPiOneOblique         Type1                 yes       240       0 Y     .      
+   ProgressivePi                    Type0     Identity-H  NO        202       9 .     Y      
+   MT-Extra                         Type0     Identity-H  NO         58       1 .     Y      
+   MathematicalPi-Four              Type1                 NO         52   1,446 Y     Y      
+   WWDOC15                          Type0     Identity-H  NO         47       0 .     Y      
+   MathematicalPi-Six               Type1                 NO         35     961 Y     .      
+   SymbolStd                        Type1                 NO         26      85 .     Y      
+   MathematicalPi-Two               Type1                 NO          8     498 Y     .      
+   MathematicalPiLTStd-3            Type1                 yes         5       0 Y     .      
+   MathematicalPi-TwoBol            Type1                 yes         2       0 Y     .      
+   WWDOC17                          Type0     Identity-H  NO          2       0 .     Y      
+
+PUNTOS CIEGOS DEL MOTOR (7 fuentes — structural pero el regex NO las detecta):
+   PBB2k                                    silent=2,061  Type1/
+   Universal-NewswithCommPi                 silent=436  Type1/
+   ProgressivePi                            silent=202  Type0/Identity-H
+   MT-Extra                                 silent=58  Type0/Identity-H
+   WWDOC15                                  silent=47  Type0/Identity-H
+   SymbolStd                                silent=26  Type1/
+   WWDOC17                                  silent=2  Type0/Identity-H
+
+==============================================================================
