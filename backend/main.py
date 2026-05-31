@@ -916,6 +916,15 @@ async def serve_plans():
     return JSONResponse({"detail": "Página no encontrada"}, status_code=404)
 
 
+@app.get("/checkout", include_in_schema=False)
+async def serve_checkout():
+    """Sirve la página de pago (simulación de checkout)."""
+    page = FRONTEND_DIR / "checkout.html"
+    if page.exists():
+        return FileResponse(str(page))
+    return JSONResponse({"detail": "Página no encontrada"}, status_code=404)
+
+
 @app.get("/legal", include_in_schema=False)
 async def serve_legal():
     """Sirve el aviso legal."""

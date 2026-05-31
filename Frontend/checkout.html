@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="description" content="BookDork — Pago seguro de tu plan" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>BookDork — Pago</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/checkout.css" />
+</head>
+<body data-public="true" class="checkout-body">
+
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/" class="logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <a href="/plans" class="header-tool-link" aria-label="Volver a planes">
+        ← Volver a planes
+      </a>
+    </div>
+  </header>
+
+  <main class="co-main">
+
+    <!-- Banner de modo demostración / sandbox -->
+    <div class="co-testbanner" role="note">
+      <span class="co-testbanner-dot" aria-hidden="true"></span>
+      <span>
+        <strong>Entorno de simulación.</strong>
+        No se realizará ningún cargo real. Usa la tarjeta de prueba
+        <button type="button" class="co-testcard-fill" id="fill-test-card"
+                aria-label="Rellenar con tarjeta de prueba 4242 4242 4242 4242">
+          4242&nbsp;4242&nbsp;4242&nbsp;4242
+        </button>
+      </span>
+    </div>
+
+    <div class="co-grid">
+
+      <!-- ── Columna: formulario de pago ───────────────────────────── -->
+      <section class="co-pay" aria-labelledby="co-pay-title">
+        <h1 class="co-pay-title" id="co-pay-title">Datos de pago</h1>
+        <p class="co-pay-sub">
+          Aceptamos tarjetas internacionales
+          <span class="co-brand-chip">Visa</span>
+          <span class="co-brand-chip">Mastercard</span>
+          <span class="co-brand-chip">Amex</span>
+        </p>
+
+        <!-- Región de estado global para lectores de pantalla -->
+        <div id="form-status" class="co-form-status" role="status" aria-live="polite"></div>
+
+        <form id="payment-form" class="co-form" novalidate autocomplete="on">
+
+          <!-- Email del titular -->
+          <div class="co-field">
+            <label class="co-label" for="email">Correo electrónico</label>
+            <input
+              class="co-input" id="email" name="email" type="email"
+              inputmode="email" autocomplete="email"
+              placeholder="tu@correo.com"
+              aria-describedby="email-error" required />
+            <p class="co-error" id="email-error" aria-live="polite"></p>
+          </div>
+
+          <!-- Número de tarjeta -->
+          <div class="co-field">
+            <label class="co-label" for="card-number">Número de tarjeta</label>
+            <div class="co-input-wrap">
+              <input
+                class="co-input co-input--card" id="card-number" name="cardnumber"
+                type="text" inputmode="numeric" autocomplete="cc-number"
+                placeholder="1234 5678 9012 3456"
+                maxlength="23" aria-describedby="card-number-error" required />
+              <span class="co-card-brand" id="card-brand" aria-hidden="true"></span>
+            </div>
+            <p class="co-error" id="card-number-error" aria-live="polite"></p>
+          </div>
+
+          <!-- Titular -->
+          <div class="co-field">
+            <label class="co-label" for="card-name">Nombre del titular</label>
+            <input
+              class="co-input" id="card-name" name="ccname" type="text"
+              autocomplete="cc-name" placeholder="Como aparece en la tarjeta"
+              autocapitalize="characters" aria-describedby="card-name-error" required />
+            <p class="co-error" id="card-name-error" aria-live="polite"></p>
+          </div>
+
+          <!-- Expiración + CVV -->
+          <div class="co-row">
+            <div class="co-field">
+              <label class="co-label" for="card-expiry">Vencimiento</label>
+              <input
+                class="co-input" id="card-expiry" name="cc-exp" type="text"
+                inputmode="numeric" autocomplete="cc-exp"
+                placeholder="MM/AA" maxlength="5"
+                aria-describedby="card-expiry-error" required />
+              <p class="co-error" id="card-expiry-error" aria-live="polite"></p>
+            </div>
+            <div class="co-field">
+              <label class="co-label" for="card-cvc">
+                CVV <span class="co-label-hint" id="cvc-hint">3 dígitos</span>
+              </label>
+              <input
+                class="co-input" id="card-cvc" name="cvc" type="text"
+                inputmode="numeric" autocomplete="cc-csc"
+                placeholder="123" maxlength="4"
+                aria-describedby="card-cvc-error cvc-hint" required />
+              <p class="co-error" id="card-cvc-error" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <!-- País + Código postal (AVS para tarjeta internacional) -->
+          <div class="co-row">
+            <div class="co-field">
+              <label class="co-label" for="country">País de la tarjeta</label>
+              <select class="co-input co-select" id="country" name="country"
+                      autocomplete="country" aria-describedby="country-error" required>
+                <option value="" disabled selected>Selecciona…</option>
+                <option value="CL">Chile</option>
+                <option value="AR">Argentina</option>
+                <option value="MX">México</option>
+                <option value="CO">Colombia</option>
+                <option value="PE">Perú</option>
+                <option value="ES">España</option>
+                <option value="US">Estados Unidos</option>
+                <option value="GB">Reino Unido</option>
+                <option value="DE">Alemania</option>
+                <option value="FR">Francia</option>
+                <option value="BR">Brasil</option>
+                <option value="CA">Canadá</option>
+                <option value="OTHER">Otro</option>
+              </select>
+              <p class="co-error" id="country-error" aria-live="polite"></p>
+            </div>
+            <div class="co-field">
+              <label class="co-label" for="postal">Código postal</label>
+              <input
+                class="co-input" id="postal" name="postal-code" type="text"
+                autocomplete="postal-code" placeholder="0000000"
+                maxlength="12" aria-describedby="postal-error" required />
+              <p class="co-error" id="postal-error" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <button type="submit" class="co-submit" id="submit-btn" disabled>
+            <span class="co-submit-lock" aria-hidden="true">🔒</span>
+            <span id="submit-label">Pagar</span>
+          </button>
+
+          <p class="co-secure-note">
+            <span aria-hidden="true">🔐</span>
+            Conexión cifrada · No almacenamos los datos de tu tarjeta
+          </p>
+        </form>
+      </section>
+
+      <!-- ── Columna: resumen del pedido ───────────────────────────── -->
+      <aside class="co-summary" aria-labelledby="co-summary-title">
+        <h2 class="co-summary-title" id="co-summary-title">Resumen del pedido</h2>
+
+        <div class="co-summary-card">
+          <div class="co-summary-plan">
+            <span class="co-summary-plan-name" id="sum-plan-name">—</span>
+            <span class="co-summary-plan-tag" id="sum-plan-tag">Mensual</span>
+          </div>
+          <p class="co-summary-plan-desc" id="sum-plan-desc"></p>
+
+          <ul class="co-summary-feats" id="sum-feats" aria-label="Incluido en el plan"></ul>
+
+          <div class="co-summary-lines">
+            <div class="co-summary-line">
+              <span>Subtotal</span>
+              <span id="sum-subtotal">—</span>
+            </div>
+            <div class="co-summary-line">
+              <span>IVA (19%)</span>
+              <span id="sum-tax">—</span>
+            </div>
+            <div class="co-summary-line co-summary-line--total">
+              <span>Total hoy</span>
+              <span id="sum-total">—</span>
+            </div>
+          </div>
+
+          <p class="co-summary-renew" id="sum-renew"></p>
+        </div>
+
+        <p class="co-summary-guarantee">
+          <span aria-hidden="true">↩</span>
+          Garantía de reembolso de 14 días. Cancela cuando quieras.
+        </p>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- ── Overlay de éxito ───────────────────────────────────────── -->
+  <div class="co-success" id="success-overlay" hidden role="dialog"
+       aria-modal="true" aria-labelledby="success-title">
+    <div class="co-success-card">
+      <div class="co-success-check" aria-hidden="true">
+        <svg viewBox="0 0 52 52" width="72" height="72">
+          <circle class="co-success-check-circle" cx="26" cy="26" r="24" fill="none"/>
+          <path class="co-success-check-mark" fill="none" d="M14 27 l8 8 l16 -18"/>
+        </svg>
+      </div>
+      <h2 class="co-success-title" id="success-title">¡Pago exitoso!</h2>
+      <p class="co-success-msg" id="success-msg"></p>
+
+      <dl class="co-success-receipt">
+        <div><dt>Plan</dt><dd id="rcpt-plan">—</dd></div>
+        <div><dt>Monto</dt><dd id="rcpt-amount">—</dd></div>
+        <div><dt>Tarjeta</dt><dd id="rcpt-card">—</dd></div>
+        <div><dt>N.º de orden</dt><dd id="rcpt-order">—</dd></div>
+        <div><dt>Fecha</dt><dd id="rcpt-date">—</dd></div>
+      </dl>
+
+      <a href="/search" class="co-success-cta">Ir al buscador →</a>
+      <a href="/plans" class="co-success-link">Volver a planes</a>
+    </div>
+  </div>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>BookDork — Solo libros de dominio público y uso legal.</p>
+  </footer>
+
+  <script src="/static/checkout.js"></script>
+</body>
+</html>
