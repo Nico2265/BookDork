@@ -195,6 +195,27 @@ python start.py --dev          # desarrollo: uvicorn HTTP con --reload
 Por defecto el puerto es `HTTP3_PORT` (`.env`). Con `DEBUG=true` se expone la documentación
 interactiva de la API en `/api/docs` (Swagger) y `/api/redoc`; en producción está oculta.
 
+### 5. (Opcional) Firebase — autenticación, planes y Vault
+
+La búsqueda y la generación de Dorks funcionan sin Firebase. El login, los planes, el
+convertidor (`/api/convert`) y The Info Vault requieren credenciales de **Firebase Admin SDK**.
+
+1. En la [Firebase Console](https://console.firebase.google.com/) abre tu proyecto →
+   ⚙️ **Configuración del proyecto** → pestaña **Cuentas de servicio**.
+2. Clic en **Generar nueva clave privada** → se descarga un archivo `.json`.
+3. Guárdalo **fuera del repositorio** (p. ej. `C:\Users\<tu-usuario>\.firebase\service-account.json`).
+   El `.gitignore` ya ignora los `*.json` de credenciales, pero mantenerlo fuera del árbol del
+   proyecto es lo más seguro.
+4. Apúntalo en el `.env`:
+   ```
+   FIREBASE_SERVICE_ACCOUNT_PATH=C:\ruta\a\service-account.json
+   ```
+   En Docker/CI puedes usar `FIREBASE_SERVICE_ACCOUNT_JSON` con el contenido JSON en línea.
+
+> Sin estas credenciales el servidor arranca igual, pero los endpoints `/api/admin/*` y los
+> que requieren sesión responderán `503`/`401` hasta configurarlas. La config **pública** de
+> Firebase del frontend (`Frontend/firebase.js`) no es secreta — es la API key web de cliente.
+
 ---
 
 ## Despliegue en producción (Docker)
@@ -300,6 +321,6 @@ fidelidad de conversión). `loadtest/` contiene scripts de pruebas de carga.
 
 ## Licencia
 
-Este repositorio no incluye todavía un archivo de licencia. Hasta que se añada uno, todos
-los derechos quedan reservados por el autor. Añade un `LICENSE` para definir las condiciones
-de uso.
+Software **propietario** — todos los derechos reservados. Ver [`LICENSE`](LICENSE).
+Está prohibido copiar, modificar, distribuir o usar el Software sin permiso escrito del
+titular del copyright.

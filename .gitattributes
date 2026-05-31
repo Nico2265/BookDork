@@ -1,0 +1,19 @@
+# Normaliza finales de línea: el repositorio guarda LF; el checkout usa el EOL
+# nativo del SO. Elimina los avisos "LF will be replaced by CRLF" y evita diffs
+# ruidosos al colaborar entre Windows / macOS / Linux.
+* text=auto
+
+# Scripts de shell: deben conservar LF aunque se editen en Windows.
+*.sh   text eol=lf
+
+# Archivos binarios: sin conversión de EOL ni diff de texto.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.pdf  binary
+*.exe  binary
+*.ttc  binary
+*.ttf  binary
+*.otf  binary
+*.zip  binary
