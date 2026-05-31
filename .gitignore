@@ -68,3 +68,30 @@ temp/
 *.msix
 *.zip
 data.ms/
+
+# ── Archivos movidos fuera del frontend público ───────────────────────────────
+# (zips de backup, Dockerfile/requirements/docker-compose duplicados que antes
+# se exponían vía /static; ver project_static_exposure_fix.md)
+archive/
+
+# ── Build output (generado por build_assets.py) ───────────────────────────────
+Frontend/dist/
+
+# ── Runtime ───────────────────────────────────────────────────────────────────
+# Lockfile efímero para asignación de slots HTTP en modo multi-worker.
+# Cada arranque limpia el suyo; entradas viejas se purgan a la hora.
+.bookdork_http_slots
+loadtest/results_*.json
+loadtest/prod_server.log
+
+# ── Fixtures de tests con copyright (libros reales — NO versionar) ──────────────
+# Conversiones de libros de texto con derechos de autor (Serway, Zill) usadas como
+# fixtures locales. Quien clone el repo debe aportar sus propios archivos.
+# Los scripts de conversión/análisis (.py) sí se versionan; solo se excluye el contenido.
+tests/serway_out/
+tests/stem_fixtures/zill_full.md
+tests/stem_fixtures/zill_ch1_recovery.md
+tests/stem_fixtures/zill_ch1_enhanced.md
+tests/stem_fixtures/zill_recovery_report.json
+# PDF escaneado de origen incierto usado en loadtest de OCR.
+loadtest/sample_scanned.pdf
