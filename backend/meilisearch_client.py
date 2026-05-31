@@ -25,7 +25,7 @@ import meilisearch
 from meilisearch.errors import MeilisearchApiError, MeilisearchCommunicationError
 
 from .config import get_settings
-from .models import BookResult, SearchRequest
+from .models import SearchRequest
 
 logger = logging.getLogger("bookdork.meilisearch")
 

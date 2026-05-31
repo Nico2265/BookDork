@@ -21,7 +21,6 @@ import json
 import logging
 import os
 from enum import Enum
-from typing import Optional
 
 import firebase_admin
 from firebase_admin import auth as fb_auth

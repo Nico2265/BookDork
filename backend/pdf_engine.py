@@ -507,7 +507,6 @@ def _get_ocr_reader(prefer_gpu: bool = True):
     use_gpu = prefer_gpu and _CUDA_OK
 
     with _ocr_lock:
-        target_attr = "_ocr_reader_gpu" if use_gpu else "_ocr_reader_cpu"
         current = _ocr_reader_gpu if use_gpu else _ocr_reader_cpu
         if current is not None:
             return current

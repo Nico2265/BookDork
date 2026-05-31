@@ -33,9 +33,15 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 import fitz
+
+if TYPE_CHECKING:
+    # numpy se importa de forma perezosa dentro de las funciones (dependencia
+    # pesada). Este import solo-para-tipos resuelve las anotaciones "np.ndarray"
+    # sin coste en runtime ni romper get_type_hints().
+    import numpy as np
 
 logger = logging.getLogger("bookdork.font_recovery")
 
@@ -160,7 +166,6 @@ def _content_aspect_ratio(arr) -> float:
 
 def _content_fill_ratio(arr) -> float:
     """Porcentaje de pixels negros dentro del bbox del contenido."""
-    import numpy as np
     trimmed = _trim_to_content(arr)
     if trimmed is None:
         return 0.0

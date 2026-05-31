@@ -7,7 +7,6 @@ Todas las claves sensibles se leen desde .env (nunca hardcodeadas).
 =============================================================================
 """
 
-import os
 from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict

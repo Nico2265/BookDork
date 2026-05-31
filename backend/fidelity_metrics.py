@@ -211,10 +211,10 @@ def compute(pdf_bytes: bytes, markdown: str,
 def format_report(report: FidelityReport, label: str = "Fidelity") -> str:
     """Render bonito para CLI / logging."""
     lines = [
-        f"╔══════════════════════════════════════════════════════════════════╗",
+        "╔══════════════════════════════════════════════════════════════════╗",
         f"║  {label:<64s} ║",
         f"║  Overall: {report.overall*100:5.2f}%                                              ║",
-        f"╠══════════════════════════════════════════════════════════════════╣",
+        "╠══════════════════════════════════════════════════════════════════╣",
     ]
     metrics = [
         ("glyph_coverage",      report.glyph_coverage),
@@ -227,8 +227,8 @@ def format_report(report: FidelityReport, label: str = "Fidelity") -> str:
     for name, val in metrics:
         bar = "█" * int(val * 20) + "░" * (20 - int(val * 20))
         lines.append(f"║  {name:<22s} {val*100:6.2f}%  {bar}      ║")
-    lines.append(f"╠══════════════════════════════════════════════════════════════════╣")
+    lines.append("╠══════════════════════════════════════════════════════════════════╣")
     for k, v in report.details.items():
         lines.append(f"║    {k:<25s} = {v:<32s}║")
-    lines.append(f"╚══════════════════════════════════════════════════════════════════╝")
+    lines.append("╚══════════════════════════════════════════════════════════════════╝")
     return "\n".join(lines)

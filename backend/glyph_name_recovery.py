@@ -321,7 +321,6 @@ class GlyphNameRecovery:
         try:
             if ext in ("pfa", "pfb", "t1"):
                 from fontTools import t1Lib
-                import io
                 # t1Lib espera ruta/archivo; usamos un buffer en memoria.
                 t1 = t1Lib.T1Font()
                 t1.data = bytes(buf)
