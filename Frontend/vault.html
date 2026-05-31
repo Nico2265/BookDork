@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="description" content="BookDork — The Info Vault: libros convertidos a Markdown por la comunidad" />
   <meta name="robots" content="noindex, nofollow" />
   <title>BookDork — The Info Vault</title>
@@ -108,7 +109,46 @@
       <!-- Filtros -->
       <section class="vlt-filters" aria-label="Filtros de búsqueda">
 
-        <!-- Período -->
+        <!-- Buscador (cliente-side, sobre libros ya cargados) -->
+        <div class="vlt-search">
+          <label class="vlt-search__label" for="vlt-search-input">
+            <svg class="vlt-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <span class="vlt-sr-only">Buscar en la biblioteca</span>
+          </label>
+          <input
+            id="vlt-search-input"
+            class="vlt-search__input"
+            type="search"
+            inputmode="search"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="120"
+            placeholder="Buscar por título, autor, ISBN o año…"
+            aria-label="Buscar por título, autor, ISBN o año"
+            aria-describedby="vlt-search-hint"
+          />
+          <button
+            id="vlt-search-clear"
+            class="vlt-search__clear"
+            type="button"
+            aria-label="Limpiar búsqueda"
+            hidden
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <kbd class="vlt-search__kbd" aria-hidden="true">/</kbd>
+        </div>
+        <p class="vlt-search__hint" id="vlt-search-hint">
+          La búsqueda filtra los libros ya cargados. Para ampliar el conjunto, ajusta los filtros o pulsa <em>Cargar más</em>.
+        </p>
+
+        <!-- Período + selects -->
         <div class="vlt-filter-row">
           <div class="vlt-period-group" role="group" aria-label="Período">
             <button class="vlt-period-btn vlt-period-btn--active" data-period="" type="button" aria-pressed="true">Todo</button>
@@ -149,6 +189,13 @@
           <button class="vlt-chip" data-topic="general" type="button">General</button>
         </div>
 
+        <!-- Pills de filtros activos -->
+        <div class="vlt-active" id="vlt-active" aria-label="Filtros activos" hidden>
+          <span class="vlt-active__label">Filtros:</span>
+          <div class="vlt-active__list" id="vlt-active-list"></div>
+          <button class="vlt-active__clear" id="vlt-active-clear" type="button">Limpiar todo</button>
+        </div>
+
         <!-- Barra de stats -->
         <div class="vlt-stats-bar" aria-live="polite" aria-atomic="true">
           <span class="vlt-count-label" id="vlt-count-label"></span>
@@ -178,8 +225,8 @@
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </div>
-          <p class="vlt-empty__title">Vault vacío</p>
-          <p class="vlt-empty__sub">
+          <p class="vlt-empty__title" id="vlt-empty-title">Vault vacío</p>
+          <p class="vlt-empty__sub" id="vlt-empty-sub">
             No hay libros con estos filtros todavía.<br>
             Sé el primero en convertir y contribuir.
           </p>

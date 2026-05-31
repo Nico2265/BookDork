@@ -53,6 +53,20 @@ const dom = {
   filterLanguage:   $('filter-language'),
   filterAuthor:     $('filter-author'),
   filterIsbn:       $('filter-isbn'),
+  activeFilters:    $('active-filters'),
+  activeFiltersList: $('active-filters-list'),
+  activeFiltersClear: $('active-filters-clear'),
+};
+
+// Etiquetas legibles para las pills de filtros activos
+const FILETYPE_LABELS = { pdf: 'PDF', epub: 'EPUB', mobi: 'MOBI', djvu: 'DjVu', azw3: 'AZW3', txt: 'TXT' };
+const LANGUAGE_LABELS = { es: 'Español', en: 'English', fr: 'Français', de: 'Deutsch', pt: 'Português' };
+const SITE_LABELS = {
+  'archive.org': 'Internet Archive',
+  'gutenberg.org': 'Project Gutenberg',
+  'openlibrary.org': 'Open Library',
+  'pdfdrive.com': 'PDF Drive',
+  'books.google.com': 'Google Books',
 };
 
 // ─── API calls ────────────────────────────────────────────────────────────────
@@ -148,6 +162,19 @@ function buildAltDorkUrl(title, author, filetype) {
   return `https://www.google.com/search?q=${encodeURIComponent(parts.join(' '))}`;
 }
 
+// Whitelist de esquemas seguros para href/src — bloquea javascript:, data:, vbscript:
+// y otros esquemas activos que podrían ejecutarse en el contexto del documento.
+function safeUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  // URLs relativas / fragmentos / queries son seguras.
+  if (/^[/?#]/.test(trimmed)) return trimmed;
+  // Solo http(s) absolutas. mailto: y tel: no aplican a este contexto.
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return '';
+}
+
 function sanitizeHighlight(html) {
   if (!html) return '';
   const escaped = html
@@ -172,8 +199,9 @@ function createBookCard(book) {
   // Cover
   const coverWrap = card.querySelector('.book-cover-wrap');
   const coverImg  = card.querySelector('.book-cover');
-  if (book.cover_url && coverImg) {
-    coverImg.src = book.cover_url;
+  const safeCover = safeUrl(book.cover_url);
+  if (safeCover && coverImg) {
+    coverImg.src = safeCover;
     coverImg.alt = `Portada de ${book.title}`;
     coverImg.addEventListener('load',  () => card.classList.add('has-cover'), { once: true });
     coverImg.addEventListener('error', () => { if (coverWrap) coverWrap.hidden = true; }, { once: true });
@@ -262,18 +290,18 @@ function createBookCard(book) {
   // Botón principal: filetype:pdf exacto
   const findBtn = card.querySelector('.btn-find');
   if (findBtn) {
-    findBtn.href = book.dork_url || '#';
+    findBtn.href = safeUrl(book.dork_url) || '#';
     const ftLabel = book.filetype ? book.filetype.toUpperCase() : 'PDF';
     const textNode = Array.from(findBtn.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
     if (textNode) textNode.textContent = `Buscar ${ftLabel} `;
-    findBtn.setAttribute('aria-label', `Buscar "${book.title}" en Google como ${ftLabel}`);
+    findBtn.setAttribute('aria-label', `Buscar "${book.title}" en Google como ${ftLabel} (se abre en una pestaña nueva)`);
   }
 
   // Botón alternativo: sin filetype:, busca páginas de descarga
   const altBtn = card.querySelector('.btn-find-alt');
   if (altBtn) {
-    altBtn.href = buildAltDorkUrl(book.title, book.author, book.filetype);
-    altBtn.setAttribute('aria-label', `Búsqueda amplia de "${book.title}" en la web`);
+    altBtn.href = safeUrl(buildAltDorkUrl(book.title, book.author, book.filetype)) || '#';
+    altBtn.setAttribute('aria-label', `Búsqueda amplia de "${book.title}" en la web (se abre en una pestaña nueva)`);
   }
 
   return card;
@@ -282,19 +310,43 @@ function createBookCard(book) {
 // ─── Skeletons ────────────────────────────────────────────────────────────────
 
 function renderSkeletons(count = 6) {
-  dom.resultsGrid.innerHTML = '';
+  dom.resultsGrid.replaceChildren();
+  const frag = document.createDocumentFragment();
   for (let i = 0; i < count; i++) {
-    const skel = document.createElement('div');
+    const skel = document.createElement('article');
     skel.className = 'book-card book-card--skeleton';
     skel.setAttribute('aria-hidden', 'true');
-    skel.innerHTML = `
-      <div class="skel-line skeleton skel-title"></div>
-      <div class="skel-line skeleton skel-author"></div>
-      <div class="skel-line skeleton skel-desc"></div>
-      <div class="skel-line skeleton skel-actions"></div>
-    `;
-    dom.resultsGrid.appendChild(skel);
+
+    const cover = document.createElement('div');
+    cover.className = 'skel-cover';
+
+    const body = document.createElement('div');
+    body.className = 'skel-body';
+
+    const row = document.createElement('div');
+    row.className = 'skel-row';
+    for (let b = 0; b < 3; b++) {
+      const badge = document.createElement('span');
+      badge.className = 'skel-badge';
+      row.appendChild(badge);
+    }
+
+    const title = document.createElement('div');
+    title.className = 'skel-line skel-title';
+    const author = document.createElement('div');
+    author.className = 'skel-line skel-author';
+    const desc1 = document.createElement('div');
+    desc1.className = 'skel-line skel-desc';
+    const desc2 = document.createElement('div');
+    desc2.className = 'skel-line skel-desc-2';
+    const footer = document.createElement('div');
+    footer.className = 'skel-line skel-footer';
+
+    body.append(row, title, author, desc1, desc2, footer);
+    skel.append(cover, body);
+    frag.appendChild(skel);
   }
+  dom.resultsGrid.appendChild(frag);
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -347,7 +399,7 @@ function renderResults(data, fromOpenLibrary = false) {
 
   if (!data.results || data.results.length === 0) {
     dom.emptyState.hidden = false;
-    if (dom.emptyDorkBtn) dom.emptyDorkBtn.href = data.dork_url || '#';
+    if (dom.emptyDorkBtn) dom.emptyDorkBtn.href = safeUrl(data.dork_url) || '#';
     dom.pagination.hidden = true;
   } else {
     dom.emptyState.hidden = true;
@@ -458,8 +510,12 @@ async function triggerSearch() {
 function setLoadingState(loading) {
   dom.spinner.hidden = !loading;
   const submitBtn = dom.form.querySelector('.search-btn');
+  const btnText = submitBtn.querySelector('.search-btn__text') || submitBtn;
   submitBtn.disabled = loading;
-  submitBtn.style.opacity = loading ? '0.7' : '1';
+  submitBtn.dataset.loading = loading ? 'true' : 'false';
+  submitBtn.setAttribute('aria-busy', loading ? 'true' : 'false');
+  btnText.textContent = loading ? 'Buscando…' : 'Buscar';
+  dom.resultsSection.setAttribute('aria-busy', loading ? 'true' : 'false');
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -478,6 +534,83 @@ function updateFiltersBadge() {
   const count = countActiveFilters();
   dom.filtersBadge.hidden = count === 0;
   dom.filtersBadge.textContent = String(count);
+  renderActiveFilterPills();
+}
+
+// Descriptores de filtros activos para las pills visibles
+function activeFilterDescriptors() {
+  const items = [];
+  if (state.filetype !== 'any') items.push({ key: 'filetype', label: `Formato: ${FILETYPE_LABELS[state.filetype] || state.filetype.toUpperCase()}` });
+  if (state.language !== 'any') items.push({ key: 'language', label: `Idioma: ${LANGUAGE_LABELS[state.language] || state.language}` });
+  if (state.site !== 'any')     items.push({ key: 'site',     label: `Fuente: ${SITE_LABELS[state.site] || state.site}` });
+  if (state.author)             items.push({ key: 'author',   label: `Autor: ${state.author}` });
+  if (state.isbn)               items.push({ key: 'isbn',     label: `ISBN: ${state.isbn}` });
+  return items;
+}
+
+function renderActiveFilterPills() {
+  if (!dom.activeFilters || !dom.activeFiltersList) return;
+  const items = activeFilterDescriptors();
+  dom.activeFiltersList.replaceChildren();
+
+  if (items.length === 0) {
+    dom.activeFilters.hidden = true;
+    return;
+  }
+  dom.activeFilters.hidden = false;
+
+  items.forEach(({ key, label }) => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'active-filter-pill';
+    pill.setAttribute('aria-label', `Quitar filtro ${label}`);
+
+    const txt = document.createElement('span');
+    txt.textContent = label;
+
+    const x = document.createElement('span');
+    x.className = 'active-filter-pill__x';
+    x.setAttribute('aria-hidden', 'true');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '10'); svg.setAttribute('height', '10');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2.4');
+    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l1.setAttribute('x1','18'); l1.setAttribute('y1','6'); l1.setAttribute('x2','6'); l1.setAttribute('y2','18');
+    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l2.setAttribute('x1','6'); l2.setAttribute('y1','6'); l2.setAttribute('x2','18'); l2.setAttribute('y2','18');
+    svg.append(l1, l2);
+    x.appendChild(svg);
+
+    pill.append(txt, x);
+    pill.addEventListener('click', () => removeActiveFilter(key));
+    dom.activeFiltersList.appendChild(pill);
+  });
+}
+
+function removeActiveFilter(key) {
+  switch (key) {
+    case 'filetype': state.filetype = 'any'; dom.filterFiletype.value = 'any'; break;
+    case 'language': state.language = 'any'; dom.filterLanguage.value = 'any'; break;
+    case 'site':     state.site     = 'any'; dom.filterSite.value     = 'any'; break;
+    case 'author':   state.author   = '';    dom.filterAuthor.value   = '';    break;
+    case 'isbn':     state.isbn     = '';    dom.filterIsbn.value     = '';    break;
+    default: return;
+  }
+  state.page = 1;
+  updateFiltersBadge();
+  if (state.query.length >= 2) triggerSearch();
+}
+
+function clearAllActiveFilters() {
+  state.filetype = 'any'; dom.filterFiletype.value = 'any';
+  state.language = 'any'; dom.filterLanguage.value = 'any';
+  state.site     = 'any'; dom.filterSite.value     = 'any';
+  state.author   = '';    dom.filterAuthor.value   = '';
+  state.isbn     = '';    dom.filterIsbn.value     = '';
+  state.page = 1;
+  updateFiltersBadge();
+  if (state.query.length >= 2) triggerSearch();
 }
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
@@ -534,6 +667,9 @@ function initSearchListeners() {
   [dom.filterAuthor, dom.filterIsbn].forEach(el =>
     el.addEventListener('input', filterChangeHandler)
   );
+
+  // Pills de filtros activos: botón "Limpiar todo"
+  dom.activeFiltersClear?.addEventListener('click', clearAllActiveFilters);
 
   dom.prevPage.addEventListener('click', () => {
     if (state.page > 1) {

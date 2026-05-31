@@ -153,6 +153,12 @@ function initParticles() {
 /**
  * Consulta el endpoint /api/health y actualiza los indicadores del header.
  */
+// Logs verbosos solo en desarrollo local. En producción solo se registra el
+// código de estado, nunca el cuerpo de la respuesta (puede contener datos
+// internos en mensajes de error 5xx).
+const _isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const _devLog = (...args) => { if (_isDev) console.error(...args); };
+
 async function checkServerHealth() {
   const statLabel = document.querySelector('#stat-indexed .stat-label');
   const statDot = document.querySelector('#stat-indexed .stat-dot');
@@ -170,9 +176,11 @@ async function checkServerHealth() {
     const elapsed = performance.now() - t0;
 
     if (!response.ok) {
-      console.error('[BookDork] Health check HTTP error:', response.status, response.statusText);
-      const text = await response.text().catch(() => '');
-      console.error('[BookDork] Response body:', text.slice(0, 500));
+      _devLog('[BookDork] Health check HTTP error:', response.status, response.statusText);
+      if (_isDev) {
+        const text = await response.text().catch(() => '');
+        _devLog('[BookDork] Response body:', text.slice(0, 500));
+      }
       throw new Error(`HTTP ${response.status}`);
     }
 
@@ -181,7 +189,7 @@ async function checkServerHealth() {
     try {
       data = JSON.parse(text);
     } catch {
-      console.error('[BookDork] Health check: respuesta no es JSON:', text.slice(0, 500));
+      _devLog('[BookDork] Health check: respuesta no es JSON:', text.slice(0, 500));
       throw new Error('non-json');
     }
     const isOk = data.status === 'ok';
@@ -201,7 +209,7 @@ async function checkServerHealth() {
     }
 
   } catch (err) {
-    console.error('[BookDork] Health check falló:', err.message || err);
+    _devLog('[BookDork] Health check falló:', err.message || err);
     if (statDot) {
       statDot.style.background = '#e05252';
       statDot.style.boxShadow  = '0 0 6px #e05252';

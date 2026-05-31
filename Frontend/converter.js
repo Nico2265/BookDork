@@ -10,6 +10,17 @@ import {
   doc, getDoc,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
+// Whitelist de esquemas seguros para href/src — bloquea javascript:, data:,
+// vbscript: y demás esquemas activos. URLs relativas y fragmentos pasan tal cual.
+function safeUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (/^[/?#]/.test(trimmed)) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return '';
+}
+
 // ─── Límites por plan ─────────────────────────────────────────────────────────
 const PLAN_LIMITS = {
   gratis: { type: 'lifetime', max: 5,   maxFileBytes: 20  * 1024 * 1024 },
@@ -99,12 +110,14 @@ function renderPlanBanner() {
   tagEl.textContent = labels[plan] || 'Gratis';
   tagEl.className   = `cv-plan-tag cv-plan-tag--${plan === 'gratis' ? 'free' : plan}`;
 
-  if (limits.type === 'lifetime') {
-    const used = limits.max - remaining;
-    usageEl.innerHTML = `<strong>${remaining}</strong> de ${limits.max} conversiones restantes (total)`;
-  } else {
-    usageEl.innerHTML = `<strong>${remaining}</strong> de ${limits.max} conversiones restantes hoy`;
-  }
+  const suffix = limits.type === 'lifetime'
+    ? ` de ${limits.max} conversiones restantes (total)`
+    : ` de ${limits.max} conversiones restantes hoy`;
+  usageEl.replaceChildren();
+  const strong = document.createElement('strong');
+  strong.textContent = String(remaining);
+  usageEl.appendChild(strong);
+  usageEl.appendChild(document.createTextNode(suffix));
 
   banner.hidden = false;
 
@@ -485,8 +498,9 @@ function renderResults(data) {
         const linkEl     = metaPanel.querySelector('.cv-rc-meta-link');
         const subjWrap   = metaPanel.querySelector('.cv-rc-meta-subjects');
 
-        if (meta.cover_url) {
-          coverEl.src = meta.cover_url;
+        const safeCover = safeUrl(meta.cover_url);
+        if (safeCover) {
+          coverEl.src = safeCover;
           coverEl.alt = meta.title || 'Portada';
         } else {
           coverEl.hidden = true;
@@ -499,8 +513,9 @@ function renderResults(data) {
         pubEl.textContent = pubParts.join(' · ');
         pubEl.hidden      = pubParts.length === 0;
 
-        if (meta.info_url) {
-          linkEl.href = meta.info_url;
+        const safeInfo = safeUrl(meta.info_url);
+        if (safeInfo) {
+          linkEl.href = safeInfo;
         } else {
           linkEl.hidden = true;
         }

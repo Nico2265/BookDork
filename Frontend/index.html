@@ -35,7 +35,7 @@
           <polyline points="14 2 14 8 20 8"/>
           <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
         </svg>
-        Convertidor MD
+        <span class="header-tool-link__text">Convertidor MD</span>
       </a>
       <div class="header-stats" id="header-stats" aria-live="polite">
         <span class="stat-badge" id="stat-indexed">
@@ -68,16 +68,38 @@
               type="search" id="search-query" name="q"
               class="search-input" placeholder="Título, autor, ISBN…"
               autocomplete="off" autocorrect="off" spellcheck="false"
-              maxlength="512" aria-label="Buscar libros" required
+              maxlength="512" aria-label="Buscar libros"
+              aria-describedby="search-hint-typos"
             />
             <span class="search-spinner" id="search-spinner" aria-hidden="true" hidden>
               <svg class="spinner-svg" viewBox="0 0 24 24">
                 <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke-width="3"/>
               </svg>
             </span>
-            <button type="button" id="clear-btn" class="search-clear-btn" aria-label="Limpiar" hidden>✕</button>
+            <button type="button" id="clear-btn" class="search-clear-btn" aria-label="Limpiar búsqueda" hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
-          <button type="submit" class="search-btn" aria-label="Buscar">Buscar</button>
+          <button type="submit" class="search-btn" aria-label="Buscar"><span class="search-btn__text">Buscar</span></button>
+        </div>
+
+        <!-- Hint: tip de idioma + tolerancia a typos + atajo de teclado -->
+        <div class="search-hints" id="search-hints">
+          <span class="search-hints__left" id="search-hint-typos">
+            <strong class="search-hints__tip">Tip:</strong> más resultados buscando el título en inglés · aceptamos errores tipográficos
+          </span>
+          <span class="search-hints__right">
+            Pulsa <kbd class="kbd">/</kbd> para enfocar
+          </span>
+        </div>
+
+        <!-- Pills de filtros activos (vacío por defecto) -->
+        <div class="active-filters" id="active-filters" hidden aria-label="Filtros activos">
+          <span class="active-filters__label">Filtros:</span>
+          <div class="active-filters__list" id="active-filters-list"></div>
+          <button type="button" class="active-filters__clear" id="active-filters-clear">Limpiar todo</button>
         </div>
 
         <details class="filters-panel" id="filters-panel">
@@ -138,7 +160,7 @@
     </section>
 
     <!-- RESULTADOS -->
-    <section class="results-section" id="results-section" aria-live="polite" hidden>
+    <section class="results-section" id="results-section" aria-live="polite" aria-busy="false" hidden>
       <div class="results-meta">
         <span id="results-count" class="results-count"></span>
         <span id="results-time" class="results-time"></span>
@@ -156,9 +178,10 @@
         <div class="empty-icon">📭</div>
         <h2>Sin resultados</h2>
         <p>No encontramos coincidencias. Intenta con otro término o busca directamente en Google.</p>
-        <a class="btn-google-search" id="empty-dork-btn" href="#" target="_blank" rel="noopener noreferrer">
+        <a class="btn-google-search" id="empty-dork-btn" href="#" target="_blank" rel="noopener noreferrer"
+           aria-label="Buscar en Google (se abre en una pestaña nueva)">
           Buscar en Google
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             <polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
@@ -220,7 +243,7 @@
 
   <!-- FOOTER -->
   <footer class="site-footer" role="contentinfo">
-    <p>BookDork — Solo libros de dominio público y uso legal.</p>
+    <p>BookDork — Buscador · Solo contenido de dominio público y uso legal.</p>
     <div id="user-menu" class="footer-user-menu"></div>
   </footer>
 
