@@ -135,14 +135,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         proto = "https" if self._tls_active else "http"
         port  = self._settings.HTTP3_PORT
 
-        # CSP endurecida: eliminado 'unsafe-inline' de style-src (OWASP A03)
+        # CSP endurecida:
+        #  - Eliminado 'unsafe-inline' de style-src (OWASP A03)
+        #  - img-src sin http: (forzar HTTPS; OL covers ya sirven HTTPS)
+        #  - object-src 'none' (bloquea Flash/applets)
+        #  - manifest-src/worker-src 'self' (defensa explícita)
+        #  - frame-ancestors 'none' refuerza X-Frame-Options
         self._csp = (
             "default-src 'self'; "
             "script-src 'self' https://www.gstatic.com https://www.google.com "
             "https://recaptcha.google.com; "
             "style-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
             "font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data: https: http:; "
+            "img-src 'self' data: https:; "
+            "object-src 'none'; "
+            "manifest-src 'self'; "
+            "worker-src 'self'; "
+            "media-src 'self'; "
             f"connect-src 'self' {proto}://localhost:{port} {proto}://127.0.0.1:{port} "
             "https://www.gstatic.com https://www.google.com https://recaptcha.google.com "
             "https://openlibrary.org https://covers.openlibrary.org "

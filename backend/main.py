@@ -110,32 +110,55 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("⚠ Meilisearch NO disponible. Búsqueda local desactivada.")
 
-    # Inicializar semáforo global de conversiones (debe crearse en contexto async)
+    # ── Dimensionado del pool de conversión por worker HTTP ───────────────────
+    # Con HTTP_WORKERS=N, cada worker abre su propio ProcessPoolExecutor.
+    # Para que la suma de procesos de conversión no exceda CONVERT_MAX_CONCURRENT
+    # (que debe ≤ len(CONVERT_CPU_CORES)), repartimos proporcionalmente.
+    n_http = max(1, settings.HTTP_WORKERS)
+    pool_size_per_worker = max(1, settings.CONVERT_MAX_CONCURRENT // n_http)
+    # El semáforo per-worker limita conversiones simultáneas dentro de este proceso.
     global _convert_sem, _convert_pool
-    _convert_sem = asyncio.Semaphore(settings.CONVERT_MAX_CONCURRENT)
-    logger.info("✓ Semáforo de conversiones: máx. %d simultáneas.", settings.CONVERT_MAX_CONCURRENT)
+    _convert_sem = asyncio.Semaphore(pool_size_per_worker)
+    logger.info(
+        "✓ Semáforo de conversiones (este worker): %d simultáneas "
+        "(total cluster: %d, repartido entre %d workers HTTP).",
+        pool_size_per_worker, settings.CONVERT_MAX_CONCURRENT, n_http,
+    )
 
-    # Pool de procesos con afinidad CPU: cada worker se fija a un núcleo distinto.
-    # ProcessPoolExecutor crea procesos separados → cada uno tiene su propio GIL
-    # → paralelismo CPU real (no hay contención entre workers de conversión).
+    # Sub-set de CONVERT_CPU_CORES asignado a este worker HTTP, calculado por
+    # el slot que le toca al proceso (ver _claim_http_slot). Slot=0 toma los
+    # primeros K cores, slot=1 los siguientes, etc., cíclicamente.
+    my_http_slot = _claim_http_slot(n_http)
+    my_convert_cores = _split_cores(settings.CONVERT_CPU_CORES, n_http, my_http_slot)
+
+    # Pool de procesos con afinidad CPU. Cada proceso del pool se fija a un
+    # core distinto del subset asignado a este HTTP worker.
     _worker_counter = multiprocessing.Value("i", 0)
     _convert_pool = concurrent.futures.ProcessPoolExecutor(
-        max_workers=len(settings.CONVERT_CPU_CORES),
+        max_workers=max(1, len(my_convert_cores)),
         initializer=_worker_affinity_init,
-        initargs=(_worker_counter, list(settings.CONVERT_CPU_CORES)),
+        initargs=(_worker_counter, list(my_convert_cores)),
     )
     logger.info(
-        "✓ Pool de conversión: %d procesos worker en núcleos CPU %s.",
-        len(settings.CONVERT_CPU_CORES), settings.CONVERT_CPU_CORES,
+        "✓ Pool de conversión: %d procesos en cores %s (HTTP worker slot=%d).",
+        max(1, len(my_convert_cores)), my_convert_cores, my_http_slot,
     )
 
-    # Fijar el event loop asyncio a los núcleos 0-1 para que no compita con workers.
+    # Afinidad del event loop: cada worker HTTP toma un core de HTTP_CPU_CORES.
+    # Si hay menos cores que workers, se reparten cíclicamente (varios workers
+    # comparten core → degradación gradual, no fallo).
     try:
         import psutil as _ps
-        _ps.Process().cpu_affinity([0, 1])
-        logger.info("✓ Event loop asyncio fijado a núcleos 0-1.")
-    except Exception:
-        pass
+        http_cores_list = list(settings.HTTP_CPU_CORES)
+        if http_cores_list:
+            my_http_core = http_cores_list[my_http_slot % len(http_cores_list)]
+            _ps.Process().cpu_affinity([my_http_core])
+            logger.info(
+                "✓ Event loop fijado a core %d (slot=%d, %d HTTP cores disponibles).",
+                my_http_core, my_http_slot, len(http_cores_list),
+            )
+    except Exception as exc:
+        logger.debug("CPU affinity no aplicada al event loop: %s", exc)
 
     # Inicializar caché de conversiones
     if settings.CACHE_ENABLED:
@@ -148,11 +171,36 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("○ Caché desactivado (CACHE_ENABLED=false).")
 
+    # ── OCR config + pre-warm ─────────────────────────────────────────────────
+    # configure() inyecta los valores de Settings al runtime de pdf_engine
+    # sin que ese módulo importe config (evita import circular).
+    pdf_engine.configure(
+        dpi=settings.OCR_DPI,
+        pages_parallel=settings.OCR_PAGES_PARALLEL,
+        gpu_concurrency=settings.OCR_GPU_CONCURRENCY,
+        gpu_timeout_s=settings.OCR_GPU_TIMEOUT_S,
+    )
+
+    # Pre-cargar modelo EasyOCR: elimina ~1.5 s de cold start en la primera
+    # conversión escaneada. Solo si CUDA disponible y OCR_PREWARM=True.
+    # Fallback silencioso si falla (server arranca igual, OCR lazy en demanda).
+    if settings.OCR_PREWARM:
+        try:
+            ok = pdf_engine.prewarm()
+            if ok:
+                logger.info("✓ OCR pre-warmed (modelo en VRAM/RAM, listo para inferencia).")
+            else:
+                logger.info("○ OCR no pre-warmed (easyocr no instalado o sin CUDA).")
+        except Exception as exc:
+            logger.warning("Pre-warm OCR falló: %s — se cargará lazy en demanda.", exc)
+
     # Estado de los motores de conversión
     eng = pdf_engine.get_engine_status()
     logger.info(
-        "✓ Motores activos — PyMuPDF: %s | CUDA/OCR: %s | MarkItDown: %s",
+        "✓ Motores activos — PyMuPDF: %s | CUDA: %s | MarkItDown: %s | "
+        "OCR-GPU: %s | OCR-CPU: %s",
         eng["pymupdf"], eng["cuda"], eng["markitdown"],
+        eng["ocr_gpu_ready"], eng["ocr_cpu_ready"],
     )
 
     # Tarea periódica: limpiar rate limiter cada hora
@@ -254,6 +302,79 @@ _convert_pool: concurrent.futures.ProcessPoolExecutor | None = None
 _convert_sem: asyncio.Semaphore | None = None
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Coordinación de workers HTTP (slot assignment + core split)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Lockfile compartido entre workers uvicorn para asignar slots únicos.
+# Cada worker abre, lockea, lee N PIDs ya escritos, escribe el suyo y libera.
+# Su posición en la lista es su slot (0, 1, 2, …). Robusto ante crashes:
+# el archivo se trunca al primer arranque por worker_id=0 si tiene >1h.
+_HTTP_SLOT_FILE = Path(os.environ.get("BOOKDORK_RUNTIME_DIR", ".")) / ".bookdork_http_slots"
+
+
+def _claim_http_slot(n_http: int) -> int:
+    """
+    Asigna un slot único (0..n_http-1) a este proceso HTTP worker.
+
+    Implementación: archivo .bookdork_http_slots en CWD. Cada worker añade su
+    PID atómicamente y recibe como slot su índice de inserción módulo n_http.
+
+    Si solo hay 1 worker (HTTP_WORKERS=1) devuelve 0 sin tocar disco —
+    preserva el comportamiento original sin efectos colaterales.
+
+    En caso de error de I/O cae a `os.getpid() % n_http` (peor: dos workers
+    podrían coincidir, ligera contención sin caída de servicio).
+    """
+    if n_http <= 1:
+        return 0
+    try:
+        # Trunca el archivo si tiene > 1h (residuo de un arranque anterior).
+        if _HTTP_SLOT_FILE.exists():
+            age_s = time.time() - _HTTP_SLOT_FILE.stat().st_mtime
+            if age_s > 3600:
+                _HTTP_SLOT_FILE.unlink()
+
+        # Append atómico: open en modo 'a' es atómico para writes < PIPE_BUF.
+        # En Windows usamos un FileLock cooperativo si está disponible.
+        with open(_HTTP_SLOT_FILE, "a+", encoding="utf-8") as f:
+            f.seek(0)
+            existing = [line.strip() for line in f if line.strip()]
+            slot = len(existing) % n_http
+            f.write(f"{os.getpid()}\n")
+            f.flush()
+        return slot
+    except OSError as exc:
+        logger.warning(
+            "No se pudo claim slot HTTP via lockfile (%s). Fallback a PID modulo.", exc,
+        )
+        return os.getpid() % n_http
+
+
+def _split_cores(all_cores: list[int], n_http: int, my_slot: int) -> list[int]:
+    """
+    Reparte `all_cores` entre los n_http workers HTTP. Devuelve el subset
+    asignado al slot `my_slot`. Reparto contiguo (no round-robin) para
+    preservar locality de caché por worker.
+
+    Ejemplo: all_cores=[2,3,4,5], n_http=2 →
+       slot 0 → [2, 3]
+       slot 1 → [4, 5]
+
+    Si n_http > len(all_cores), algunos workers reciben el mismo set
+    (degradación gradual, no fallo).
+    """
+    if not all_cores:
+        return []
+    if n_http <= 1:
+        return list(all_cores)
+    chunk = max(1, len(all_cores) // n_http)
+    start = (my_slot % n_http) * chunk
+    end   = start + chunk if my_slot < n_http - 1 else len(all_cores)
+    subset = all_cores[start:end]
+    return subset if subset else [all_cores[my_slot % len(all_cores)]]
+
+
 def _worker_affinity_init(counter: multiprocessing.Value, cores: list) -> None:
     """
     Ejecutado UNA vez por proceso worker al crearse.
@@ -339,12 +460,35 @@ app.add_middleware(
 app.include_router(admin_router)
 
 # ── Frontend estático ──────────────────────────────────────────────────────────
-# Sirve los archivos HTML/CSS/JS del directorio frontend/
-FRONTEND_DIR = Path(__file__).parent.parent / "Frontend"
+# Solo se sirven extensiones públicas conocidas. Cualquier otro archivo
+# (Dockerfile, requirements.txt, .zip, .env, .bak, .map, etc.) devuelve 404
+# aunque por error termine dentro del directorio Frontend/.
+class SafeStaticFiles(StaticFiles):
+    _ALLOWED_EXTS = frozenset({
+        ".html", ".css", ".js", ".mjs",
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
+        ".woff", ".woff2", ".ttf", ".otf",
+    })
+
+    async def get_response(self, path: str, scope):  # type: ignore[override]
+        if not path or path.endswith("/"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        ext = os.path.splitext(path)[1].lower()
+        if not ext or ext not in self._ALLOWED_EXTS:
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        return await super().get_response(path, scope)
+
+
+# Si existe Frontend/dist/ (salida de build_assets.py), se sirve esa versión
+# con assets minificados y hasheados; si no, fallback a Frontend/ fuente para
+# desarrollo local sin paso de build.
+_FRONTEND_ROOT = Path(__file__).parent.parent / "Frontend"
+_FRONTEND_DIST = _FRONTEND_ROOT / "dist"
+FRONTEND_DIR   = _FRONTEND_DIST if _FRONTEND_DIST.exists() else _FRONTEND_ROOT
 if FRONTEND_DIR.exists():
     app.mount(
         "/static",
-        StaticFiles(directory=str(FRONTEND_DIR)),
+        SafeStaticFiles(directory=str(FRONTEND_DIR)),
         name="static",
     )
 
@@ -1153,5 +1297,22 @@ if __name__ == "__main__":
     cfg.accesslog = "-"
     cfg.errorlog = "-"
     cfg.loglevel = "INFO"
+
+    # Multi-worker: honra HTTP_WORKERS también por esta vía (entrypoint de Docker
+    # `python -m backend.main`). Antes solo start.py lo aplicaba, así que el
+    # contenedor corría siempre 1 worker pese a la config. Cada worker reparte
+    # CONVERT_MAX_CONCURRENT y toma su slot de cores en el lifespan.
+    cfg.workers = max(1, settings.HTTP_WORKERS)
+    if cfg.workers > 1:
+        logger.info(
+            "Multi-worker: %d procesos HTTP (cores %s, conversión en %s).",
+            cfg.workers, settings.HTTP_CPU_CORES, settings.CONVERT_CPU_CORES,
+        )
+        # Limpia el lockfile de slots de arranques previos (evita stale entries).
+        _slot_file = Path(os.environ.get("BOOKDORK_RUNTIME_DIR", ".")) / ".bookdork_http_slots"
+        try:
+            _slot_file.unlink()
+        except OSError:
+            pass
 
     asyncio.run(hypercorn.asyncio.serve(app, cfg))

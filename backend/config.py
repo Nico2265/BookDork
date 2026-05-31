@@ -92,6 +92,22 @@ class Settings(BaseSettings):
                 )
         return self
 
+    @model_validator(mode="after")
+    def _check_cpu_layout(self) -> "Settings":
+        """Detecta colisión entre cores HTTP y de conversión (causa contention bajo carga)."""
+        overlap = set(self.HTTP_CPU_CORES) & set(self.CONVERT_CPU_CORES)
+        if overlap:
+            raise RuntimeError(
+                f"HTTP_CPU_CORES y CONVERT_CPU_CORES se solapan en {sorted(overlap)}. "
+                "Los workers HTTP y de conversión deben estar en cores disjuntos para "
+                "evitar contención CPU. Revisa la config."
+            )
+        if self.HTTP_WORKERS < 1:
+            raise RuntimeError("HTTP_WORKERS debe ser >= 1.")
+        if self.CONVERT_MAX_CONCURRENT < 1:
+            raise RuntimeError("CONVERT_MAX_CONCURRENT debe ser >= 1.")
+        return self
+
     # ── Firebase ─────────────────────────────────────────────────────────────
     FIREBASE_PROJECT_ID: str = "bookdork-b9825"  # ID del proyecto Firebase
 
@@ -104,15 +120,59 @@ class Settings(BaseSettings):
     FIREBASE_SERVICE_ACCOUNT_PATH: str = ""   # Ruta al archivo .json
     FIREBASE_SERVICE_ACCOUNT_JSON: str = ""   # Contenido JSON (útil en Docker/CI)
 
+    # ── Workers HTTP (FastAPI / uvicorn) ──────────────────────────────────────
+    # Número de procesos uvicorn que sirven HTTP. 1 = un solo proceso async
+    # (techo ~285 RPS en Ryzen 5 5600X). Subir a 2-4 multiplica throughput pero
+    # requiere coordinación con CONVERT_CPU_CORES para no oversuscribir cores.
+    # Restricción: incompatible con --reload (uvicorn fuerza workers=1 en dev).
+    HTTP_WORKERS: int = 1
+
+    # Núcleos reservados para los workers HTTP (event loop asyncio).
+    # Cada worker recibe afinidad sobre uno o más de estos cores. Si el set es
+    # más pequeño que HTTP_WORKERS, los excedentes se reparten cíclicamente y
+    # algunos workers compartirán core (degradación gradual, no fallo).
+    HTTP_CPU_CORES: list[int] = [0, 1]
+
+    # ── OCR (GPU/CPU) ─────────────────────────────────────────────────────────
+    # Pre-cargar el modelo EasyOCR al arrancar el servidor (~1.5 s extra de
+    # boot) para eliminar el cold start en la primera conversión escaneada.
+    # Si CUDA no está disponible, el pre-warm omite silenciosamente.
+    OCR_PREWARM: bool = True
+
+    # Páginas procesadas en paralelo dentro de un mismo PDF. Cada hilo renderiza
+    # su página en CPU y luego adquiere el semáforo GPU para el OCR. Valor 2-4
+    # balancea overlap CPU/GPU sin saturar VRAM. >4 no ayuda (CUDA serializa).
+    OCR_PAGES_PARALLEL: int = 3
+
+    # Concurrentes GPU permitidos. RTX 3060 Ti 8 GB: 1.17 GB por modelo cargado,
+    # ~50 MB por imagen en VRAM. Hasta 5 sesiones caben holgadas; 3 deja margen
+    # para gaming/otros workloads en el mismo equipo.
+    OCR_GPU_CONCURRENCY: int = 3
+
+    # Si la cola GPU no se desocupa en este timeout, se cae a OCR-CPU como
+    # apoyo. Mantiene throughput bajo carga aunque la página individual sea
+    # más lenta. 0 desactiva el fallback (cola infinita).
+    OCR_GPU_TIMEOUT_S: float = 8.0
+
+    # DPI de rasterización para OCR. 150 ya es legible; 200 mejora ~5 % de
+    # exactitud a costo de ~33 % más tiempo. Subir a 300 para libros muy
+    # antiguos o tipografías delicadas.
+    OCR_DPI: int = 200
+
     # ── Conversión de archivos ────────────────────────────────────────────────
     CONVERT_TIMEOUT_SECONDS: int = 300   # Timeout máximo por archivo individual
-    # 4 procesos worker = 4 núcleos dedicados (ProcessPoolExecutor, no threads).
-    # Cada proceso tiene su propio GIL → paralelismo CPU real.
+    # Procesos de conversión TOTALES en el sistema (suma de todos los HTTP workers).
+    # ProcessPoolExecutor crea procesos separados → cada uno tiene su propio GIL
+    # → paralelismo CPU real. Si HTTP_WORKERS=N, cada worker abre un pool de
+    # tamaño ceil(CONVERT_MAX_CONCURRENT / N) para que el total se mantenga.
     CONVERT_MAX_CONCURRENT:  int = 4
 
     # Núcleos físicos asignados a los workers de conversión.
     # Núcleos 0-1 quedan libres para el event loop asyncio y el SO.
     # Ryzen 5 5600X (6C/12T): núcleos 2-5 para conversión.
+    # IMPORTANTE: estos cores DEBEN ser disjuntos de HTTP_CPU_CORES. Si se solapan,
+    # los workers HTTP y los de conversión competirán por los mismos cores y el
+    # rendimiento bajo carga colapsa (medido: 26× más errores en load test).
     CONVERT_CPU_CORES: list[int] = [2, 3, 4, 5]
 
     # ── Caché de conversiones ─────────────────────────────────────────────────

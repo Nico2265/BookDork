@@ -129,29 +129,44 @@ class MeilisearchBookClient:
         Crea o actualiza el índice de libros con la configuración correcta.
         Usa la master key (admin) para configurar y la search key para leer.
         Retorna True si el índice está listo.
+
+        IMPORTANTE: el handle de búsqueda se obtiene con `client.index(name)`
+        (constructor local, sin llamada HTTP). NO usar `get_index()` con la
+        search key — ese endpoint requiere permiso `indexes.get` que la clave
+        de solo búsqueda no tiene, y produciría 403 invalid_api_key.
         """
         try:
             try:
                 self._admin_index  = self._admin_client.get_index(self._index_name)
-                self._search_index = self._search_client.get_index(self._index_name)
-                logger.info("Índice '%s' encontrado.", self._index_name)
             except MeilisearchApiError as e:
-                if "invalid_api_key" in str(e) or "missing_authorization_header" in str(e):
+                err_str = str(e)
+                if "invalid_api_key" in err_str or "missing_authorization_header" in err_str:
                     logger.error(
-                        "Clave de Meilisearch incorrecta. "
-                        "Verifica que MEILI_MASTER_KEY en .env coincide con la del servidor."
+                        "Master key rechazada por Meilisearch (HTTP 403/401). "
+                        "Verifica que MEILI_MASTER_KEY en .env coincide con la "
+                        "variable de entorno del servidor Meilisearch "
+                        "(docker inspect <container> | grep MEILI_MASTER_KEY)."
                     )
                     return False
-                # Índice no existe → crear con master key
-                task = self._admin_client.create_index(
-                    self._index_name, {"primaryKey": "id"}
-                )
-                self._admin_client.wait_for_task(task.task_uid, timeout_in_ms=10000)
-                self._admin_index  = self._admin_client.get_index(self._index_name)
-                self._search_index = self._search_client.get_index(self._index_name)
-                logger.info("Índice '%s' creado.", self._index_name)
+                if "index_not_found" in err_str:
+                    # Índice no existe → crear con master key
+                    task = self._admin_client.create_index(
+                        self._index_name, {"primaryKey": "id"}
+                    )
+                    self._admin_client.wait_for_task(task.task_uid, timeout_in_ms=10000)
+                    self._admin_index = self._admin_client.get_index(self._index_name)
+                    logger.info("Índice '%s' creado.", self._index_name)
+                else:
+                    raise
+            else:
+                logger.info("Índice '%s' encontrado.", self._index_name)
+
+            # Handle local para el cliente de búsqueda — no requiere llamada HTTP
+            # y por tanto no depende de los permisos de la search key.
+            self._search_index = self._search_client.index(self._index_name)
 
             self._configure_index()
+            self._verify_search_key()
             return True
 
         except MeilisearchApiError as e:
@@ -160,6 +175,39 @@ class MeilisearchBookClient:
         except MeilisearchCommunicationError as e:
             logger.error("No se puede conectar a Meilisearch: %s", e)
             return False
+
+    def _verify_search_key(self) -> None:
+        """
+        Probe explícito: ejecuta una búsqueda vacía con la search key para
+        detectar early una clave inválida o sin permiso `search` sobre el
+        índice. Si falla, se registra un error accionable sin abortar el
+        arranque (la indexación con master key sigue funcionando).
+        """
+        if self._search_index is None:
+            return
+        try:
+            self._search_index.search("", {"limit": 0})
+        except MeilisearchApiError as e:
+            err_str = str(e)
+            if "invalid_api_key" in err_str or "missing_authorization_header" in err_str:
+                if get_settings().MEILI_SEARCH_API_KEY:
+                    logger.error(
+                        "MEILI_SEARCH_API_KEY rechazada por Meilisearch. "
+                        "La clave debe existir en /keys con actions=['search'] "
+                        "e indexes incluyendo '%s'. "
+                        "Crear con: curl -H 'Authorization: Bearer <MASTER_KEY>' "
+                        "-X POST http://localhost:7700/keys "
+                        "-H 'Content-Type: application/json' "
+                        "-d '{\"actions\":[\"search\"],\"indexes\":[\"%s\"],\"expiresAt\":null}'",
+                        self._index_name, self._index_name,
+                    )
+                else:
+                    # No definida → se está usando la master key como fallback,
+                    # que sí tiene permisos: si esto falla, la master key es el problema.
+                    logger.error(
+                        "Probe de búsqueda falló con la master key como fallback — "
+                        "verifica MEILI_MASTER_KEY."
+                    )
 
     def _configure_index(self) -> None:
         """Aplica la configuración de atributos vía cliente admin."""

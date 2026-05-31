@@ -301,6 +301,11 @@ class ConversionCache:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.execute("PRAGMA temp_store=MEMORY")
+        # Con HTTP_WORKERS>1 hay varios procesos escribiendo el mismo index.db.
+        # WAL permite lecturas concurrentes, pero los writes se serializan vía
+        # file-lock entre procesos; sin busy_timeout un write contendido lanza
+        # "database is locked" de inmediato. 5 s de espera lo absorbe.
+        self._db.execute("PRAGMA busy_timeout=5000")
         self._init_schema()
         logger.info("Caché de conversiones inicializado en '%s'.", cache_dir)
 
