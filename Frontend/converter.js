@@ -137,12 +137,17 @@ function hideUpgradeModal() {
   if (modal) modal.hidden = true;
 }
 
-// ─── Selección de plan (pago próximamente) ────────────────────────────────────
+// ─── Selección de plan → checkout simulado ────────────────────────────────────
 
 let _selectedPlan = 'basic';
 
 function startCheckout() {
-  showToast(`Plan ${_selectedPlan === 'basic' ? 'Basic ($5/mes)' : 'Pro ($50/mes)'} seleccionado. El sistema de pago estará disponible próximamente.`, 'info');
+  // Redirige a la página de pago simulado con el plan preseleccionado y marca
+  // /converter como destino de retorno tras completar el "pago".
+  const plan = _selectedPlan === 'pro' ? 'pro' : 'basic';
+  window.location.href =
+    '/checkout?plan=' + encodeURIComponent(plan) +
+    '&next=' + encodeURIComponent('/converter');
 }
 
 const API_CONVERT   = '/api/convert';
@@ -418,6 +423,9 @@ async function uploadFiles(files) {
         reject(new Error('Sesión expirada. Recarga la página e inicia sesión de nuevo.'));
       } else if (xhr.status === 402) {
         const detail = data.detail || {};
+        // Límite del plan agotado → abre el modal de upgrade, que lleva al
+        // flujo de pago (/checkout). El error sigue mostrándose como aviso.
+        showUpgradeModal();
         reject(new Error(
           typeof detail === 'object'
             ? (detail.message || 'Límite de conversiones alcanzado.')

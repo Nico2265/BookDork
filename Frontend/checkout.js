@@ -63,6 +63,19 @@
     return { key: key, plan: PLANS[key] };
   }
 
+  /* ── Destino de retorno tras el pago (anti open-redirect) ────── */
+  // Solo se acepta una ruta interna conocida que empiece por "/" (nunca "//"
+  // ni "/\", que el navegador trataría como URL externa protocol-relative).
+  function safeNext(raw) {
+    if (!raw) return null;
+    if (raw.charAt(0) !== '/' || raw.charAt(1) === '/' || raw.charAt(1) === '\\') {
+      return null;
+    }
+    var path = raw.split('?')[0].split('#')[0];
+    var allowed = ['/converter', '/search', '/vault', '/plans'];
+    return allowed.indexOf(path) !== -1 ? raw : null;
+  }
+
   /* ── Render del resumen de pedido ───────────────────────────── */
   function renderSummary(plan) {
     var subtotal = plan.price;
@@ -232,6 +245,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     var sel = getSelectedPlan();
     var amounts = renderSummary(sel.plan);
+    var nextUrl = safeNext(new URLSearchParams(window.location.search).get('next'));
 
     var els = {
       email:   $('email'),
@@ -443,8 +457,18 @@
 
       var overlay = $('success-overlay');
       overlay.hidden = false;
+
+      // Si llegamos desde una vista concreta (?next=), el CTA de éxito regresa
+      // allí con ?subscribed=1 para que esa vista muestre el aviso de bienvenida.
+      var cta = overlay.querySelector('.co-success-cta');
+      if (nextUrl && cta) {
+        cta.setAttribute('href',
+          nextUrl + (nextUrl.indexOf('?') === -1 ? '?' : '&') + 'subscribed=1');
+        cta.textContent = 'Volver y continuar →';
+      }
+
       // Mueve el foco al diálogo para accesibilidad.
-      overlay.querySelector('.co-success-cta').focus();
+      if (cta) cta.focus();
       document.body.style.overflow = 'hidden';
     }
   });
