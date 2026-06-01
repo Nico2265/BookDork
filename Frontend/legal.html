@@ -13,149 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/landing.css?v=3" />
 
-  <style>
-    /* ── Layout principal ── */
-    .legal-page {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 120px 32px 80px;
-    }
-
-    /* ── Encabezado ── */
-    .legal-header {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 32px;
-      margin-bottom: 48px;
-    }
-    .legal-header__eyebrow {
-      display: inline-block;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 12px;
-    }
-    .legal-header h1 {
-      font-family: var(--font-title);
-      font-size: clamp(1.6rem, 3vw, 2.4rem);
-      color: var(--text-1);
-      line-height: 1.2;
-      margin-bottom: 16px;
-    }
-    .legal-header__meta {
-      font-size: 0.82rem;
-      color: var(--text-2);
-    }
-
-    /* ── Aviso destacado ── */
-    .legal-notice {
-      background: rgba(201,150,90,0.07);
-      border: 1px solid rgba(201,150,90,0.22);
-      border-radius: var(--r-lg);
-      padding: 20px 24px;
-      margin-bottom: 48px;
-      font-size: 0.88rem;
-      color: var(--text-2);
-      line-height: 1.65;
-    }
-    .legal-notice strong { color: var(--gold); }
-
-    /* ── Secciones ── */
-    .legal-section {
-      margin-bottom: 44px;
-    }
-    .legal-section h2 {
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: var(--text-1);
-      margin-bottom: 14px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .legal-section h2 span {
-      font-size: 0.7rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-3);
-      margin-right: 10px;
-      vertical-align: middle;
-    }
-    .legal-section p {
-      color: var(--text-2);
-      font-size: 0.9rem;
-      line-height: 1.75;
-      margin-bottom: 12px;
-    }
-    .legal-section p:last-child { margin-bottom: 0; }
-    .legal-section strong { color: var(--text-1); font-weight: 600; }
-    .legal-section a {
-      color: var(--gold);
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
-
-    /* ── Lista legal ── */
-    .legal-list {
-      list-style: none;
-      padding: 0;
-      margin: 10px 0 12px;
-    }
-    .legal-list li {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      color: var(--text-2);
-      font-size: 0.9rem;
-      line-height: 1.65;
-      margin-bottom: 8px;
-    }
-    .legal-list li::before {
-      content: '—';
-      color: var(--gold);
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-
-    /* ── Bloque exención ── */
-    .legal-disclaimer-box {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-card);
-      border-radius: var(--r-md);
-      padding: 20px 24px;
-      margin-top: 14px;
-    }
-    .legal-disclaimer-box p {
-      font-size: 0.85rem;
-      margin-bottom: 8px;
-    }
-
-    /* ── Contacto ── */
-    .legal-contact {
-      background: var(--bg-card);
-      border: 1px solid var(--border-card);
-      border-radius: var(--r-lg);
-      padding: 24px;
-      margin-top: 48px;
-      text-align: center;
-    }
-    .legal-contact p {
-      color: var(--text-2);
-      font-size: 0.88rem;
-      margin-bottom: 6px;
-    }
-    .legal-contact a {
-      color: var(--gold);
-      font-weight: 500;
-      text-underline-offset: 3px;
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 640px) {
-      .legal-page { padding: 100px 20px 60px; }
-    }
-  </style>
+  <link rel="stylesheet" href="/static/legal.css" />
 </head>
 <body>
 
@@ -182,7 +40,7 @@
         <span class="legal-header__eyebrow">Documentación legal</span>
         <h1>Aviso Legal y Condiciones de Uso</h1>
         <p class="legal-header__meta">
-          Última actualización: mayo de 2026 &nbsp;·&nbsp; Versión 1.0
+          Última actualización: mayo de 2026 &nbsp;·&nbsp; Versión 1.1
         </p>
       </header>
 
@@ -192,6 +50,8 @@
         No almacena, distribuye, reproduce ni facilita la descarga de ningún contenido protegido por derechos de
         autor. Toda búsqueda se ejecuta en Google, un motor de terceros fuera del control de BookDork.
         El usuario es el único responsable del uso que haga de los resultados obtenidos.
+        Además, el proceso de pago de la Plataforma es por ahora una <strong>demostración</strong>:
+        no se realiza ningún cargo real ni se almacenan datos de tarjetas (véase la sección&nbsp;09).
       </div>
 
       <!-- 1. Identidad -->
@@ -333,9 +193,78 @@
         </p>
       </section>
 
-      <!-- 8. Modificaciones -->
+      <!-- 8. Datos personales y privacidad -->
       <section class="legal-section" aria-labelledby="s8">
-        <h2 id="s8"><span>08</span>Modificaciones del aviso legal</h2>
+        <h2 id="s8"><span>08</span>Datos personales y privacidad</h2>
+        <p>
+          Para crear y mantener una cuenta, BookDork trata los siguientes datos personales del
+          usuario registrado:
+        </p>
+        <ul class="legal-list">
+          <li>Correo electrónico y, opcionalmente, número de teléfono proporcionados durante el registro.</li>
+          <li>Datos de uso asociados a la cuenta: plan contratado y contadores de conversiones realizadas.</li>
+          <li>Identificadores técnicos de autenticación (token de sesión emitido por el proveedor de identidad).</li>
+        </ul>
+        <p>
+          La autenticación y el almacenamiento se realizan mediante <strong>Firebase Authentication</strong>
+          y <strong>Cloud Firestore</strong>, servicios operados por Google&nbsp;LLC en calidad de encargado
+          del tratamiento. Dichos datos pueden alojarse en servidores ubicados fuera de Chile, lo que implica
+          una transferencia internacional de datos sujeta a las garantías del proveedor.
+        </p>
+        <p>
+          La finalidad del tratamiento es exclusivamente la gestión de la cuenta, la autenticación del
+          usuario, la aplicación de los límites de cada plan y la prevención de abusos. BookDork no vende
+          ni cede los datos personales a terceros con fines comerciales.
+        </p>
+        <p>
+          Conforme a la <strong>Ley N.º 19.628 sobre Protección de la Vida Privada</strong> —y a la
+          <strong>Ley N.º 21.719</strong>, que la moderniza y entrará en vigencia según su período de
+          vacancia legal—, el usuario puede ejercer en cualquier momento sus derechos de acceso,
+          rectificación, cancelación y oposición sobre sus datos, escribiendo al correo indicado al final
+          de este documento.
+        </p>
+        <div class="legal-disclaimer-box">
+          <p>
+            BookDork <strong>no recopila ni almacena datos de tarjetas de pago</strong>. Cualquier dato
+            introducido en el formulario de pago se procesa según lo descrito en la sección&nbsp;09.
+          </p>
+        </div>
+      </section>
+
+      <!-- 9. Planes, pagos y naturaleza del proceso de pago -->
+      <section class="legal-section" aria-labelledby="s9">
+        <h2 id="s9"><span>09</span>Planes, pagos y naturaleza del proceso de pago</h2>
+        <p>
+          BookDork ofrece distintos planes (gratuito y de pago) con límites de uso diferenciados. Los
+          precios mostrados se expresan en pesos chilenos (CLP), incluyen el IVA cuando corresponda y
+          tienen carácter <strong>referencial</strong>.
+        </p>
+        <div class="legal-disclaimer-box">
+          <p>
+            <strong>Importante:</strong> el proceso de pago disponible actualmente en la Plataforma es una
+            <strong>demostración (simulación)</strong>. No se efectúa ningún cargo real, no interviene
+            ninguna pasarela de pago y los datos de la tarjeta introducidos se procesan
+            <strong>únicamente en el navegador del usuario</strong>: no se transmiten ni se almacenan en
+            los servidores de BookDork.
+          </p>
+          <p>
+            Los mensajes de confirmación o de "plan activado" que muestra esta demostración no constituyen
+            una transacción comercial real ni generan obligación de pago alguna. La asignación efectiva de
+            planes se gestiona de forma administrativa.
+          </p>
+        </div>
+        <p>
+          Cuando se habiliten pagos reales, éstos se procesarán a través de un <strong>proveedor de pagos
+          externo</strong> (por ejemplo, Stripe) que cumple con el estándar de seguridad PCI-DSS; en tal
+          caso, los datos de la tarjeta serán tratados por dicho proveedor y no por BookDork, y la
+          contratación quedará sujeta a la <strong>Ley N.º 19.496 sobre Protección de los Derechos de los
+          Consumidores</strong> y a las condiciones específicas que se publiquen al efecto.
+        </p>
+      </section>
+
+      <!-- 10. Modificaciones -->
+      <section class="legal-section" aria-labelledby="s10">
+        <h2 id="s10"><span>10</span>Modificaciones del aviso legal</h2>
         <p>
           BookDork se reserva el derecho de modificar el presente aviso legal en cualquier momento.
           Los cambios entrarán en vigor desde su publicación en esta página. El uso continuado de la
@@ -343,9 +272,9 @@
         </p>
       </section>
 
-      <!-- 9. Ley aplicable -->
-      <section class="legal-section" aria-labelledby="s9">
-        <h2 id="s9"><span>09</span>Ley aplicable y jurisdicción</h2>
+      <!-- 11. Ley aplicable -->
+      <section class="legal-section" aria-labelledby="s11">
+        <h2 id="s11"><span>11</span>Ley aplicable y jurisdicción</h2>
         <p>
           El presente aviso legal se rige por la legislación de la República de Chile, en particular
           la <strong>Ley N.º 17.336 de Propiedad Intelectual</strong> y sus modificaciones. Para
@@ -357,7 +286,7 @@
 
       <!-- Contacto -->
       <div class="legal-contact">
-        <p>Consultas legales, notificaciones de infracción y solicitudes de supresión:</p>
+        <p>Consultas legales, notificaciones de infracción y ejercicio de derechos sobre datos personales (acceso, rectificación, cancelación y oposición):</p>
         <a href="mailto:legal@bookdork.com">legal@bookdork.com</a>
       </div>
 
