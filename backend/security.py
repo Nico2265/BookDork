@@ -26,14 +26,22 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, NamedTuple, Optional
 
 from fastapi import Request, HTTPException, Security
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from .config import get_settings
+from .firebase_auth import (
+    Role,
+    has_min_role,
+    resolve_role,
+    verify_firebase_token,
+    _bearer_scheme,
+)
 
 logger = logging.getLogger("bookdork.security")
 
@@ -303,6 +311,108 @@ async def require_admin_key(
             detail="Acceso denegado.",
         )
     return api_key
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RBAC — Control de acceso admin por identidad (clave heredada O rol Firebase)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AdminPrincipal(NamedTuple):
+    """
+    Identidad efectiva que accede a un endpoint administrativo.
+
+    kind:  "api_key"  → clave admin compartida heredada (operador sin identidad)
+           "firebase" → usuario Firebase con custom claim 'role'
+    id:    UID del usuario, o el literal "legacy-admin-key" para la clave compartida.
+    role:  Rol efectivo concedido (la clave heredada equivale a superadmin).
+    email: Email del usuario Firebase si está disponible (None para la clave).
+    """
+    kind:  str
+    id:    str
+    role:  Role
+    email: Optional[str] = None
+
+    @property
+    def audit_label(self) -> str:
+        """Etiqueta estable y no sensible para los logs de auditoría."""
+        if self.kind == "api_key":
+            return "api_key:legacy-admin-key role=superadmin"
+        return (
+            f"firebase:{self.id[:8]} "
+            f"({self.email or 'sin-email'}) role={self.role.value}"
+        )
+
+
+def require_admin_access(min_role: Role = Role.SUPERADMIN) -> Callable:
+    """
+    Factory de dependencia FastAPI para endpoints administrativos.
+
+    Acepta DOS vías de autenticación, en este orden de prioridad:
+
+      1. Cabecera `X-Admin-API-Key` (clave admin heredada). Si es válida concede
+         acceso equivalente a 'superadmin'. Mantiene 100 % de compatibilidad con
+         los clientes/operadores actuales — nada se rompe.
+
+      2. `Authorization: Bearer <firebase_id_token>` con el custom claim 'role'.
+         Concede acceso si el rol del usuario satisface `min_role` o superior.
+         Aporta IDENTIDAD individual, auditoría real y revocación granular.
+
+    Si no se presenta ninguna credencial válida, responde 403 (fail-closed).
+
+    Uso:
+        principal: AdminPrincipal = Depends(require_admin_access(Role.BILLING))
+    """
+
+    async def _dependency(
+        api_key: Optional[str] = Security(_api_key_header),
+        creds: Optional[HTTPAuthorizationCredentials] = Security(_bearer_scheme),
+    ) -> AdminPrincipal:
+        settings = get_settings()
+
+        # ── Vía 1: clave admin heredada (compatibilidad → superadmin) ─────────
+        if api_key:
+            if secrets.compare_digest(
+                api_key.encode(), settings.ADMIN_API_KEY.encode()
+            ):
+                return AdminPrincipal(
+                    kind="api_key",
+                    id="legacy-admin-key",
+                    role=Role.SUPERADMIN,
+                )
+            logger.warning("Intento de acceso admin con clave inválida")
+            raise HTTPException(status_code=403, detail="Acceso denegado.")
+
+        # ── Vía 2: identidad Firebase con claim de rol ────────────────────────
+        if creds and creds.credentials:
+            claims = await verify_firebase_token(creds.credentials)  # 401 si inválido
+            uid    = claims.get("sub") or claims.get("user_id") or ""
+            role   = resolve_role(claims.get("role"))
+
+            if not has_min_role(role, min_role):
+                logger.warning(
+                    "Acceso admin denegado por rol insuficiente — "
+                    "uid=%s role=%s requerido=%s",
+                    uid[:8], role.value, min_role.value,
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        f"Rol insuficiente. Se requiere '{min_role.value}' "
+                        "o superior."
+                    ),
+                )
+
+            return AdminPrincipal(
+                kind="firebase",
+                id=uid,
+                role=role,
+                email=claims.get("email"),
+            )
+
+        # ── Sin credenciales → denegar ────────────────────────────────────────
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+
+    return _dependency
 
 
 # ─────────────────────────────────────────────────────────────────────────────

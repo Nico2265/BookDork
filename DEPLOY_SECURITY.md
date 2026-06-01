@@ -84,7 +84,67 @@ Debe mostrar: `content-security-policy`, `x-frame-options: DENY`,
 
 ---
 
-## 5. Lo que NO se hizo (y por qué)
+## 5. IAM / RBAC — Roles administrativos (Firebase custom claims)
+
+El backend ya no depende de **una sola clave admin compartida** para todo. Existe
+control de acceso por **identidad y rol**, manteniendo la clave heredada por
+compatibilidad. La autorización de `/api/admin/*` acepta dos vías:
+
+1. **`X-Admin-API-Key`** (heredada) → equivale a `superadmin`. Nada se rompe.
+2. **`Authorization: Bearer <firebase_id_token>`** con custom claim `role`.
+
+### Jerarquía de roles (lineal, el superior hereda al inferior)
+
+| Permiso \ Rol                      | `user` | `support` | `billing` | `superadmin` |
+|------------------------------------|:------:|:---------:|:---------:|:------------:|
+| Ver propio doc / buscar / convertir |   ✅   |     ✅    |     ✅    |      ✅      |
+| Ver cualquier usuario (GET admin)  |   –    |     ✅    |     ✅    |      ✅      |
+| Cambiar plan (PATCH plan)          |   –    |     –     |     ✅    |      ✅      |
+| Reindexar / cache / backfill       |   –    |     –     |     –     |      ✅      |
+| Gestionar roles (PATCH role)       |   –    |     –     |     –     |      ✅      |
+
+El claim se incrusta en el JWT firmado por Google y se verifica **localmente**
+(misma firma RS256 que el resto del token). `user` = ausencia de claim.
+
+### Bootstrap del primer administrador
+
+Como conceder roles requiere `superadmin`, el primer rol se asigna con la clave
+heredada (que equivale a superadmin):
+
+```bash
+curl -X PATCH "https://bookdork.<dominio>/api/admin/users/<UID>/role" \
+  -H "X-Admin-API-Key: <ADMIN_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"superadmin"}'
+```
+
+A partir de ahí, ese usuario puede gestionar roles con su propia identidad y se
+puede **retirar/rotar** la clave heredada compartida.
+
+### Propagación y revocación
+
+- Al asignar un rol se **revocan los refresh tokens** del usuario (re-login).
+- El claim se propaga al refrescar el ID token (**≤ 1 h**). Al *retirar* un rol
+  existe una ventana ≤ 1 h en la que un ID token ya emitido aún lo contiene.
+  Para necesidades de revocación inmediata, deshabilita la cuenta en Firebase
+  Auth (`disabled = true`), que sí corta el acceso al instante.
+
+### Despliegue de las reglas Firestore (lectura por rol)
+
+`firestore.rules` permite lectura de `usuarios/{uid}` a roles admin (defensa en
+profundidad; la escritura sigue siendo exclusiva del Admin SDK). Desplegar:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+> Nota: el backend lee/escribe vía Admin SDK (ignora reglas), por lo que esta
+> apertura de lectura es **opcional** y solo habilita una eventual consola admin
+> client-side. Si no la necesitas, puedes revertir esa línea a `request.auth.uid == uid`.
+
+---
+
+## 6. Lo que NO se hizo (y por qué)
 
 - **Anti-debugging / bloquear F12 / detectar DevTools**: bypass trivial (un
   proxy, una extensión, `--auto-open-devtools-for-tabs`). Daño colateral:

@@ -27,8 +27,10 @@ from .firebase_admin_client import (
     get_user_by_email,
     get_user_by_uid,
     set_user_plan,
+    set_user_role,
 )
-from .security import require_admin_key
+from .firebase_auth import Role
+from .security import AdminPrincipal, require_admin_access
 
 logger  = logging.getLogger("bookdork.admin")
 router  = APIRouter(prefix="/api/admin", tags=["Administración — Usuarios"])
@@ -60,6 +62,7 @@ class UserAdminResponse(BaseModel):
     email: Optional[str]
     display_name: Optional[str]
     disabled: bool
+    role: str
     plan: str
     plan_descripcion: str
     conversiones_usadas: int
@@ -73,6 +76,24 @@ class SetPlanResponse(BaseModel):
     plan_anterior: str
     plan_nuevo: str
     plan_descripcion: str
+    mensaje: str
+
+
+class SetRoleRequest(BaseModel):
+    role: Role
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def normalize_role(cls, v: str) -> str:
+        """Acepta mayúsculas/minúsculas para mayor usabilidad."""
+        return v.lower() if isinstance(v, str) else v
+
+
+class SetRoleResponse(BaseModel):
+    uid: str
+    email: Optional[str]
+    role_anterior: str
+    role_nuevo: str
     mensaje: str
 
 
@@ -108,11 +129,16 @@ async def _build_user_response(uid: str) -> UserAdminResponse:
     except ValueError:
         plan_val = Plan.FREE.value
 
+    # Rol administrativo desde los custom claims (ausencia → 'user')
+    from .firebase_auth import resolve_role
+    role_val = resolve_role((user_record.custom_claims or {}).get("role")).value
+
     return UserAdminResponse(
         uid                  = user_record.uid,
         email                = user_record.email,
         display_name         = user_record.display_name,
         disabled             = user_record.disabled,
+        role                 = role_val,
         plan                 = plan_val,
         plan_descripcion     = _PLAN_DESCRIPTIONS.get(plan_val, plan_val),
         conversiones_usadas  = fs_data.get("conversiones", 0),
@@ -133,7 +159,7 @@ async def _build_user_response(uid: str) -> UserAdminResponse:
 async def get_user_info_by_email(
     request: Request,
     email: EmailStr = Query(..., description="Email del usuario"),
-    _: str = Depends(require_admin_key),
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPPORT)),
 ) -> UserAdminResponse:
     """
     Devuelve datos de Firebase Auth y Firestore del usuario con ese email.
@@ -144,8 +170,8 @@ async def get_user_info_by_email(
         raise _wrap_admin_errors(exc)
 
     logger.info(
-        "AUDIT get_user — email=%s uid=%s ip=%s",
-        email, user_record.uid[:8], _caller_id(request),
+        "AUDIT get_user — email=%s uid=%s actor=%s ip=%s",
+        email, user_record.uid[:8], principal.audit_label, _caller_id(request),
     )
 
     try:
@@ -162,14 +188,14 @@ async def get_user_info_by_email(
 async def get_user_info_by_uid(
     request: Request,
     uid: str,
-    _: str = Depends(require_admin_key),
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPPORT)),
 ) -> UserAdminResponse:
     """
     Devuelve datos de Firebase Auth y Firestore del usuario con ese UID.
     """
     logger.info(
-        "AUDIT get_user — uid=%s ip=%s",
-        uid[:8], _caller_id(request),
+        "AUDIT get_user — uid=%s actor=%s ip=%s",
+        uid[:8], principal.audit_label, _caller_id(request),
     )
 
     try:
@@ -191,7 +217,7 @@ async def set_plan_by_email(
     request: Request,
     body: SetPlanRequest,
     email: EmailStr = Query(..., description="Email del usuario"),
-    _: str = Depends(require_admin_key),
+    principal: AdminPrincipal = Depends(require_admin_access(Role.BILLING)),
 ) -> SetPlanResponse:
     """
     Actualiza el campo `plan` en Firestore para el usuario con ese email.
@@ -210,7 +236,7 @@ async def set_plan_by_email(
         result = await set_user_plan(
             uid        = user_record.uid,
             new_plan   = body.plan,
-            changed_by = _caller_id(request),
+            changed_by = f"{principal.audit_label} ip={_caller_id(request)}",
         )
     except (ValueError, RuntimeError) as exc:
         raise _wrap_admin_errors(exc)
@@ -237,7 +263,7 @@ async def set_plan_by_uid(
     request: Request,
     uid: str,
     body: SetPlanRequest,
-    _: str = Depends(require_admin_key),
+    principal: AdminPrincipal = Depends(require_admin_access(Role.BILLING)),
 ) -> SetPlanResponse:
     """
     Actualiza el campo `plan` en Firestore para el usuario con ese UID.
@@ -251,7 +277,7 @@ async def set_plan_by_uid(
         result      = await set_user_plan(
             uid        = uid,
             new_plan   = body.plan,
-            changed_by = _caller_id(request),
+            changed_by = f"{principal.audit_label} ip={_caller_id(request)}",
         )
         user_record = await get_user_by_uid(uid)
     except (ValueError, RuntimeError) as exc:
@@ -266,5 +292,59 @@ async def set_plan_by_uid(
         mensaje          = (
             f"Plan actualizado correctamente de "
             f"'{result['plan_anterior'].value}' a '{result['plan_nuevo'].value}'."
+        ),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PATCH — Asignar rol administrativo (RBAC)  ·  requiere SUPERADMIN
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.patch(
+    "/users/{uid}/role",
+    response_model=SetRoleResponse,
+    summary="Asigna un rol administrativo a un usuario (RBAC)",
+)
+async def set_role_by_uid(
+    request: Request,
+    uid: str,
+    body: SetRoleRequest,
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPERADMIN)),
+) -> SetRoleResponse:
+    """
+    Establece el custom claim `role` del usuario, habilitando acceso admin por
+    identidad (sustituye a compartir la clave admin).
+
+    Roles disponibles (jerárquicos):
+    - `user`       — sin privilegios admin (retira el rol)
+    - `support`    — leer cualquier usuario
+    - `billing`    — support + cambiar planes
+    - `superadmin` — billing + reindexar / cache / gestionar roles
+
+    Requiere rol `superadmin` (o la clave admin heredada). El cambio se propaga
+    a los tokens del usuario tras el próximo refresh (≤1 h); las sesiones activas
+    se revocan para forzar re-login.
+
+    **Bootstrap**: el primer `superadmin` se asigna usando la cabecera
+    `X-Admin-API-Key` (equivalente a superadmin) para llamar a este endpoint.
+    """
+    try:
+        result      = await set_user_role(
+            uid        = uid,
+            new_role   = body.role,
+            changed_by = f"{principal.audit_label} ip={_caller_id(request)}",
+        )
+        user_record = await get_user_by_uid(uid)
+    except (ValueError, RuntimeError) as exc:
+        raise _wrap_admin_errors(exc)
+
+    return SetRoleResponse(
+        uid           = uid,
+        email         = user_record.email,
+        role_anterior = result["role_anterior"].value,
+        role_nuevo    = result["role_nuevo"].value,
+        mensaje       = (
+            f"Rol actualizado correctamente de "
+            f"'{result['role_anterior'].value}' a '{result['role_nuevo'].value}'."
         ),
     )

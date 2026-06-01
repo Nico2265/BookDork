@@ -9,74 +9,132 @@
 // ALTERNATIVA (Firebase CLI):
 //   firebase deploy --only firestore:rules
 //
-// CORRECCIÓN CRIT-01:
-//   La regla anterior (`allow read, write`) permitía que cualquier usuario
-//   autenticado escribiera directamente su documento, incluyendo los campos
-//   'plan', 'conversiones' y 'conversionesDiarias'. Esto permitía:
-//     - Upgradear el propio plan a 'pro' sin pagar (via Firebase SDK)
-//     - Resetear contadores de conversión a 0
-//   Estas reglas protegen esos campos: solo el Admin SDK del backend puede
-//   modificarlos. El cliente solo puede leer y crear el documento inicial.
+// MODELO DE SEGURIDAD:
+//   • La ESCRITURA de plan y contadores de conversión es exclusiva del backend
+//     (Admin SDK), que ignora estas reglas. El cliente NUNCA los modifica.
+//   • El cliente solo puede crear su documento inicial con valores por defecto.
+//   • `hasOnly` bloquea la inyección de campos arbitrarios (incluido cualquier
+//     intento de escribir 'role' o un 'plan' elevado en el propio documento).
+//   • RBAC: el rol administrativo vive en el custom claim 'role' del ID token
+//     (lo establece SOLO el backend vía Admin SDK; el cliente no puede falsearlo)
+//     y aquí únicamente concede LECTURA admin de la colección de usuarios.
+//
+// El whitelist de `usuarios/create` coincide EXACTAMENTE con los campos que
+// escribe Frontend/auth.js (saveNewUser) — endurecer no rompe el registro.
 // =============================================================================
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Colección de usuarios ─────────────────────────────────────────────────
-    match /usuarios/{uid} {
-
-      // Lectura: solo el propio usuario
-      allow read: if request.auth != null && request.auth.uid == uid;
-
-      // Creación inicial (primer registro): solo si el documento no existe,
-      // los campos de conversión y plan son los valores por defecto, y
-      // no se escriben campos fuera de la whitelist (evita campos arbitrarios).
-      allow create: if request.auth != null
-        && request.auth.uid == uid
-        && request.resource.data.plan == 'gratis'
-        && request.resource.data.conversiones == 0
-        && request.resource.data.conversionesDiarias == 0
-        && request.resource.data.keys().hasOnly(
-             ['plan', 'conversiones', 'conversionesDiarias',
-              'email', 'displayName', 'phone', 'createdAt'])
-        && (!('email' in request.resource.data)
-             || (request.resource.data.email is string
-                 && request.resource.data.email.size() <= 320))
-        && (!('displayName' in request.resource.data)
-             || (request.resource.data.displayName is string
-                 && request.resource.data.displayName.size() <= 100))
-        && (!('phone' in request.resource.data)
-             || (request.resource.data.phone is string
-                 && request.resource.data.phone.size() <= 20));
-
-      // Actualización: COMPLETAMENTE BLOQUEADA desde el cliente.
-      // El Admin SDK del backend (Python) es la única fuente autorizada de
-      // escritura sobre campos de plan y contadores de conversión.
-      allow update: if false;
-
-      // Eliminación: bloqueada
-      allow delete: if false;
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function autenticado() {
+      return request.auth != null;
+    }
+    function esDueno(userId) {
+      return request.auth.uid == userId;
+    }
+    function emailVerificado() {
+      return request.auth.token.email_verified == true;
+    }
+    function planValido(plan) {
+      return plan in ['gratis', 'basic', 'pro'];
+    }
+    // RBAC: rol administrativo desde el custom claim 'role' del ID token.
+    // Un token sin 'role' hace que la comparación sea false (fail-closed).
+    // Guardado por autenticado() para no desreferenciar un token nulo.
+    function tieneRolAdmin() {
+      return autenticado()
+        && request.auth.token.role in ['support', 'billing', 'superadmin'];
     }
 
-    // ── Colección de teléfonos (verificación de unicidad en registro) ─────────
-    match /phones/{phone} {
-      // Lectura pública: isPhoneTaken() se llama antes de que el usuario tenga
-      // sesión activa (durante el registro), por lo que no puede ser autenticada.
-      // Firestore no expone la colección completa — solo quien conozca un número
-      // exacto puede comprobar si está registrado.
+    // ── phones/{numero} ──────────────────────────────────────────────────────
+    match /phones/{numero} {
+      // Lectura pública: isPhoneTaken() se llama antes de iniciar sesión.
       allow read: if true;
-
-      // Escritura: solo el propio usuario autenticado puede registrar su número.
-      // Solo se permite el campo 'uid'; nada más.
-      allow create: if request.auth != null
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid']);
-
+      allow create: if autenticado()
+              && request.resource.data.keys().hasOnly(['uid', 'creadoEn'])
+              && request.resource.data.keys().hasAll(['uid', 'creadoEn'])
+              && request.resource.data.uid == request.auth.uid
+              // Fuerza serverTimestamp(): el cliente no puede falsear la fecha.
+              && request.resource.data.creadoEn == request.time;
       allow update, delete: if false;
     }
 
-    // ── Denegar todo lo demás por defecto ─────────────────────────────────────
+    // ── usuarios/{uid} ───────────────────────────────────────────────────────
+    match /usuarios/{userId} {
+      // Lectura: el propio usuario, o un rol admin (RBAC, opcional).
+      // Si NO quieres lectura admin client-side, borra "|| tieneRolAdmin()".
+      allow read: if (autenticado() && esDueno(userId)) || tieneRolAdmin();
+
+      // Creación inicial del documento. hasOnly bloquea campos arbitrarios.
+      allow create: if autenticado() && esDueno(userId)
+                    && request.resource.data.keys().hasOnly([
+                         'email', 'phoneNumber', 'plan', 'conversiones',
+                         'conversionesDiarias', 'fechaConversiones',
+                         'stripeCustomerId', 'creadoEn'
+                       ])
+                    && request.resource.data.keys().hasAll([
+                         'plan', 'conversiones', 'conversionesDiarias', 'creadoEn'
+                       ])
+                    && request.resource.data.plan == 'gratis'
+                    && request.resource.data.conversiones == 0
+                    && request.resource.data.conversionesDiarias == 0
+                    // Fuerza serverTimestamp() en creadoEn: bloquea backdating.
+                    && request.resource.data.creadoEn == request.time
+                    // El cliente NO asigna su propio customer id de Stripe.
+                    && (!('stripeCustomerId' in request.resource.data)
+                          || request.resource.data.stripeCustomerId == null)
+                    // Contador de fecha vacío al crear.
+                    && (!('fechaConversiones' in request.resource.data)
+                          || request.resource.data.fechaConversiones == '')
+                    && (!('email' in request.resource.data)
+                          || request.resource.data.email == null
+                          || (request.resource.data.email is string
+                              && request.resource.data.email.size() <= 320))
+                    && (!('phoneNumber' in request.resource.data)
+                          || request.resource.data.phoneNumber == null
+                          || (request.resource.data.phoneNumber is string
+                              && request.resource.data.phoneNumber.size() <= 20));
+
+      // Escritura COMPLETAMENTE bloqueada desde el cliente: el Admin SDK del
+      // backend es la única fuente autorizada de escritura de plan/contadores.
+      allow update: if false;
+      allow delete: if false;
+
+      // ── usuarios/{uid}/busquedas/{id} ─────────────────────────────────────
+      // (Función futura: aún ningún cliente escribe aquí. Reglas endurecidas
+      //  por defecto; al implementarla, ajusta el whitelist si añades campos.)
+      match /busquedas/{busquedaId} {
+        allow read:   if autenticado() && esDueno(userId) && emailVerificado();
+        allow create: if autenticado() && esDueno(userId) && emailVerificado()
+                      && request.resource.data.keys().hasOnly(['consulta', 'dorkUrl', 'fecha'])
+                      && request.resource.data.keys().hasAll(['consulta', 'dorkUrl', 'fecha'])
+                      && request.resource.data.consulta is string
+                      && request.resource.data.consulta.size() < 512
+                      && request.resource.data.dorkUrl is string
+                      && request.resource.data.dorkUrl.size() < 2048
+                      // Fecha del servidor (timestamp no falsificable).
+                      && request.resource.data.fecha == request.time;
+        allow update, delete: if false;
+      }
+
+      // ── usuarios/{uid}/favoritos/{id} ─────────────────────────────────────
+      match /favoritos/{libroId} {
+        allow read:   if autenticado() && esDueno(userId);
+        allow create: if autenticado() && esDueno(userId) && emailVerificado()
+                      && request.resource.data.keys().hasOnly(['titulo', 'agregadoEn'])
+                      && request.resource.data.keys().hasAll(['titulo', 'agregadoEn'])
+                      && request.resource.data.titulo is string
+                      && request.resource.data.titulo.size() < 500
+                      // Fecha del servidor (timestamp no falsificable).
+                      && request.resource.data.agregadoEn == request.time;
+        allow delete: if autenticado() && esDueno(userId);
+        allow update: if false;
+      }
+    }
+
+    // ── Bloquear todo lo demás ────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

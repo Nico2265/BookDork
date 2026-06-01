@@ -49,14 +49,21 @@ from .models import (
     SearchRequest,
     SearchResponse,
 )
-from .firebase_auth import AuthContext, check_and_reserve, get_auth_context, get_user_plan_limits
+from .firebase_auth import (
+    AuthContext,
+    Role,
+    check_and_reserve,
+    get_auth_context,
+    get_user_plan_limits,
+)
 from .firebase_admin_client import initialize_admin_sdk
 from .admin_routes import router as admin_router
 from .security import (
+    AdminPrincipal,
     RateLimitMiddleware,
     SecurityHeadersMiddleware,
     check_user_agent,
-    require_admin_key,
+    require_admin_access,
 )
 # ─────────────────────────────────────────────────────────────────────────────
 # Logging
@@ -745,7 +752,7 @@ async def get_dork_queries(
 async def index_book(
     request: Request,
     book: IndexBookRequest,
-    _: str = Depends(require_admin_key),
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPERADMIN)),
 ):
     """
     Añade un libro al índice local de Meilisearch.
@@ -762,9 +769,10 @@ async def index_book(
             detail="Error al indexar el libro. Verifica que Meilisearch está disponible.",
         )
     logger.info(
-        "AUDIT index_book — title='%s' author='%s' ip=%s",
+        "AUDIT index_book — title='%s' author='%s' actor=%s ip=%s",
         book.title,
         book.author or "N/A",
+        principal.audit_label,
         request.client.host if request.client else "unknown",
     )
     return {"message": "Libro indexado correctamente.", "title": book.title}
@@ -775,13 +783,17 @@ async def index_book(
     tags=["Administración"],
     summary="Estadísticas del índice de libros",
 )
-async def get_index_stats(request: Request, _: str = Depends(require_admin_key)):
+async def get_index_stats(
+    request: Request,
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPERADMIN)),
+):
     """
     Devuelve estadísticas del índice: número de documentos, último update, etc.
     """
     check_user_agent(request)
     logger.info(
-        "AUDIT index_stats — ip=%s",
+        "AUDIT index_stats — actor=%s ip=%s",
+        principal.audit_label,
         request.client.host if request.client else "unknown",
     )
     meili = get_meili_client()
@@ -793,7 +805,10 @@ async def get_index_stats(request: Request, _: str = Depends(require_admin_key))
     tags=["Administración"],
     summary="Reclasifica todos los libros del caché con el clasificador actualizado",
 )
-async def reclassify_cache(request: Request, _: str = Depends(require_admin_key)):
+async def reclassify_cache(
+    request: Request,
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPERADMIN)),
+):
     """
     Recorre cada entrada del caché, vuelve a clasificar el tema con el algoritmo
     actual y actualiza 'topic' + 'book_id' en la base de datos SQLite.
@@ -804,8 +819,8 @@ async def reclassify_cache(request: Request, _: str = Depends(require_admin_key)
         raise HTTPException(status_code=503, detail="Caché desactivado.")
     cache = get_cache(settings.CACHE_DIR)
     result = await asyncio.to_thread(cache.reclassify_all)
-    logger.info("AUDIT reclassify_cache — checked=%d updated=%d ip=%s",
-                result["checked"], result["updated"],
+    logger.info("AUDIT reclassify_cache — checked=%d updated=%d actor=%s ip=%s",
+                result["checked"], result["updated"], principal.audit_label,
                 request.client.host if request.client else "unknown")
     return result
 
@@ -815,7 +830,10 @@ async def reclassify_cache(request: Request, _: str = Depends(require_admin_key)
     tags=["Administración"],
     summary="Re-extrae title y author faltantes en el caché",
 )
-async def reextract_metadata(request: Request, _: str = Depends(require_admin_key)):
+async def reextract_metadata(
+    request: Request,
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPERADMIN)),
+):
     """
     Recorre las entradas con title o author vacíos y los re-extrae
     del markdown y del nombre de archivo con el extractor actualizado.
@@ -826,8 +844,8 @@ async def reextract_metadata(request: Request, _: str = Depends(require_admin_ke
         raise HTTPException(status_code=503, detail="Caché desactivado.")
     cache = get_cache(settings.CACHE_DIR)
     result = await asyncio.to_thread(cache.reextract_metadata_all)
-    logger.info("AUDIT reextract_metadata — checked=%d updated=%d ip=%s",
-                result["checked"], result["updated"],
+    logger.info("AUDIT reextract_metadata — checked=%d updated=%d actor=%s ip=%s",
+                result["checked"], result["updated"], principal.audit_label,
                 request.client.host if request.client else "unknown")
     return result
 
@@ -837,7 +855,10 @@ async def reextract_metadata(request: Request, _: str = Depends(require_admin_ke
     tags=["Administración"],
     summary="Rellena cover_url para libros con ISBN en el caché",
 )
-async def backfill_covers(request: Request, _: str = Depends(require_admin_key)):
+async def backfill_covers(
+    request: Request,
+    principal: AdminPrincipal = Depends(require_admin_access(Role.SUPERADMIN)),
+):
     """
     Para cada entrada con ISBN y sin cover_url, consulta Open Library
     y almacena la URL de portada. Útil para libros ya convertidos.
@@ -870,8 +891,8 @@ async def backfill_covers(request: Request, _: str = Depends(require_admin_key))
                 cache._db.commit()
             updated += 1
 
-    logger.info("AUDIT backfill_covers — checked=%d updated=%d ip=%s",
-                checked, updated,
+    logger.info("AUDIT backfill_covers — checked=%d updated=%d actor=%s ip=%s",
+                checked, updated, principal.audit_label,
                 request.client.host if request.client else "unknown")
     return {"checked": checked, "updated": updated}
 
