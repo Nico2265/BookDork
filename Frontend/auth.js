@@ -69,6 +69,16 @@ function setBusy(btnId, busy, originalText) {
     : originalText;
 }
 
+// Gate de términos y condiciones: la cuenta no puede crearse sin aceptarlos.
+function termsAccepted(msgId) {
+  const cb = document.getElementById('accept-terms');
+  if (!cb || !cb.checked) {
+    showMsg(msgId, 'Debes aceptar los términos y condiciones para crear la cuenta.', 'error');
+    return false;
+  }
+  return true;
+}
+
 function getRecaptcha() {
   if (!_recaptcha) {
     _recaptcha = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -176,6 +186,7 @@ async function handleSendOtpForEmail() {
   if (!prefix || !number) {
     showMsg('email-msg', 'Ingresa el número de teléfono completo.', 'error'); return;
   }
+  if (!termsAccepted('email-msg')) return;
 
   const phone = normalizePhone(prefix, number);
   setBusy('send-otp-email-btn', true, 'Enviar código de verificación');
@@ -216,6 +227,7 @@ async function handleEmailRegister() {
   if (!code || code.length !== 6) {
     showMsg('email-msg', 'Ingresa el código de 6 cifras.', 'error'); return;
   }
+  if (!termsAccepted('email-msg')) return;
 
   setBusy('email-register-btn', true, 'Crear cuenta');
   try {
@@ -254,6 +266,8 @@ async function handleSendPhoneOtp() {
   if (!prefix || !number) {
     showMsg('phone-msg', 'Ingresa el número de teléfono completo.', 'error'); return;
   }
+  // En modo registro, exigir aceptación de términos antes de crear la cuenta.
+  if (_emailMode === 'register' && !termsAccepted('phone-msg')) return;
 
   const phone = normalizePhone(prefix, number);
   setBusy('send-phone-otp-btn', true, 'Enviar código SMS');
@@ -340,6 +354,9 @@ function setEmailMode(mode) {
 
   document.getElementById('phone-section-email').hidden = !isRegister;
   document.getElementById('login-section-email').hidden = isRegister;
+
+  // La casilla de términos solo aplica al registro.
+  document.getElementById('auth-terms').hidden = !isRegister;
 
   document.getElementById('email-step-1').hidden = false;
   document.getElementById('email-step-2').hidden = true;

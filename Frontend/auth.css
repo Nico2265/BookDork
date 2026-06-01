@@ -411,6 +411,37 @@ body.auth-body {
   text-align: center;
 }
 
+/* Aceptación de términos y condiciones (solo registro) */
+.auth-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--gold-dim);
+}
+.auth-terms-check {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.auth-terms-label {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.auth-terms-label a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Mensajes de error / éxito */
 .auth-msg--error {
   border-radius: var(--r-sm);
