@@ -58,6 +58,7 @@ from .firebase_auth import (
 )
 from .firebase_admin_client import initialize_admin_sdk
 from .admin_routes import router as admin_router
+from .billing_routes import router as billing_router
 from .security import (
     AdminPrincipal,
     RateLimitMiddleware,
@@ -465,6 +466,7 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(admin_router)
+app.include_router(billing_router)
 
 # ── Frontend estático ──────────────────────────────────────────────────────────
 # Solo se sirven extensiones públicas conocidas. Cualquier otro archivo
@@ -941,6 +943,15 @@ async def serve_plans():
 async def serve_checkout():
     """Sirve la página de pago (simulación de checkout)."""
     page = FRONTEND_DIR / "checkout.html"
+    if page.exists():
+        return FileResponse(str(page))
+    return JSONResponse({"detail": "Página no encontrada"}, status_code=404)
+
+
+@app.get("/account", include_in_schema=False)
+async def serve_account():
+    """Sirve la página de cuenta del usuario (datos + suscripción)."""
+    page = FRONTEND_DIR / "account.html"
     if page.exists():
         return FileResponse(str(page))
     return JSONResponse({"detail": "Página no encontrada"}, status_code=404)

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookDork — Tu cuenta y suscripción" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>BookDork — Mi cuenta</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/account.css" />
+  <link rel="stylesheet" href="/static/auth.css" />
+</head>
+
+<body>
+  <div id="auth-loading" class="auth-loading-overlay" aria-hidden="true">
+    <div class="auth-loading-spinner"></div>
+  </div>
+
+  <!-- Decoración de fondo -->
+  <div class="ac-bg-decoration" aria-hidden="true">
+    <div class="ac-bg-orb ac-bg-orb--gold"></div>
+    <div class="ac-bg-orb ac-bg-orb--purple"></div>
+  </div>
+
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/" class="logo" aria-label="BookDork — Inicio">
+        <img src="/static/logo.png" alt="BookDork" width="48" height="48">
+      </a>
+      <a href="/search" class="header-tool-link" aria-label="Ir al buscador">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Buscador
+      </a>
+    </div>
+  </header>
+
+  <main id="main-content" class="ac-main">
+    <header class="ac-page-head">
+      <h1 class="ac-page-title">Tu cuenta</h1>
+      <p class="ac-page-sub">Gestiona tus datos y tu suscripción a BookDork.</p>
+    </header>
+
+    <!-- Aviso global (errores / confirmaciones) -->
+    <div id="ac-status" class="ac-status" role="status" aria-live="polite" hidden></div>
+
+    <div class="ac-grid">
+
+      <!-- ── Tarjeta: perfil ─────────────────────────────────────── -->
+      <section class="ac-card ac-profile" aria-labelledby="ac-profile-title">
+        <h2 class="ac-card-title" id="ac-profile-title">Perfil</h2>
+
+        <div class="ac-profile-head">
+          <span class="ac-avatar" id="ac-avatar" aria-hidden="true">·</span>
+          <div class="ac-profile-id">
+            <span class="ac-profile-name" id="ac-name">—</span>
+            <span class="ac-profile-email" id="ac-email">—</span>
+          </div>
+        </div>
+
+        <dl class="ac-data-list">
+          <div class="ac-data-row">
+            <dt>Correo electrónico</dt>
+            <dd id="ac-email-2">—</dd>
+          </div>
+          <div class="ac-data-row">
+            <dt>Teléfono</dt>
+            <dd id="ac-phone">—</dd>
+          </div>
+          <div class="ac-data-row">
+            <dt>Miembro desde</dt>
+            <dd id="ac-since">—</dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- ── Tarjeta: suscripción ────────────────────────────────── -->
+      <section class="ac-card ac-sub" aria-labelledby="ac-sub-title">
+        <div class="ac-card-head">
+          <h2 class="ac-card-title" id="ac-sub-title">Suscripción</h2>
+          <span class="ac-state-pill" id="ac-state" hidden></span>
+        </div>
+
+        <!-- Estado de carga -->
+        <div class="ac-sub-loading" id="ac-sub-loading">
+          <div class="ac-skeleton ac-skeleton--lg"></div>
+          <div class="ac-skeleton"></div>
+          <div class="ac-skeleton ac-skeleton--sm"></div>
+        </div>
+
+        <!-- Contenido de la suscripción -->
+        <div class="ac-sub-body" id="ac-sub-body" hidden>
+          <div class="ac-plan-head">
+            <span class="ac-plan-name-wrap">
+              <span class="ac-plan-name" id="ac-plan-name">—</span>
+              <span class="ac-plan-cycle" id="ac-plan-cycle" hidden>Mensual</span>
+            </span>
+            <span class="ac-plan-price" id="ac-plan-price"></span>
+          </div>
+          <p class="ac-plan-desc" id="ac-plan-desc"></p>
+
+          <dl class="ac-data-list ac-sub-dates" id="ac-sub-dates" hidden>
+            <div class="ac-data-row" id="ac-cycle-row">
+              <dt>Ciclo de facturación</dt>
+              <dd id="ac-cycle-date">Mensual</dd>
+            </div>
+            <div class="ac-data-row">
+              <dt>Fecha de compra</dt>
+              <dd id="ac-buy-date">—</dd>
+            </div>
+            <div class="ac-data-row">
+              <dt id="ac-venc-label">Próxima facturación</dt>
+              <dd id="ac-venc-date">—</dd>
+            </div>
+          </dl>
+
+          <p class="ac-renew-note" id="ac-renew-note"></p>
+
+          <div class="ac-actions">
+            <a class="ac-btn ac-btn--primary" id="ac-upgrade-btn" href="/plans">Ver planes</a>
+            <button class="ac-btn ac-btn--danger" id="ac-cancel-btn" type="button" hidden>
+              Cancelar suscripción
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>BookDork — Solo libros de dominio público y uso legal.</p>
+    <div id="user-menu" class="footer-user-menu"></div>
+  </footer>
+
+  <!-- ── Modal: confirmar cancelación ────────────────────────────── -->
+  <div class="ac-modal-overlay" id="cancel-modal" hidden role="dialog"
+       aria-modal="true" aria-labelledby="cancel-modal-title">
+    <div class="ac-modal">
+      <h2 class="ac-modal-title" id="cancel-modal-title">¿Cancelar tu suscripción?</h2>
+      <p class="ac-modal-text" id="cancel-modal-text">
+        Conservarás tu plan hasta el final del ciclo ya pagado. Después, tu cuenta
+        volverá automáticamente al plan Gratis. No se realizan reembolsos del
+        período en curso.
+      </p>
+      <div class="ac-modal-actions">
+        <button class="ac-btn ac-btn--ghost" id="cancel-modal-dismiss" type="button">
+          Mantener mi plan
+        </button>
+        <button class="ac-btn ac-btn--danger" id="cancel-modal-confirm" type="button">
+          Sí, cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/static/account.js"></script>
+  <script type="module" src="/static/auth-guard.js"></script>
+</body>
+</html>

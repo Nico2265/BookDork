@@ -24,7 +24,7 @@ function safeUrl(url) {
 // ─── Límites por plan ─────────────────────────────────────────────────────────
 const PLAN_LIMITS = {
   gratis: { type: 'lifetime', max: 5,   maxFileBytes: 20  * 1024 * 1024 },
-  basic:  { type: 'daily',    max: 50,  maxFileBytes: 50  * 1024 * 1024 },
+  basic:  { type: 'daily',    max: 50,  maxFileBytes: 40  * 1024 * 1024 },
   pro:    { type: 'daily',    max: 200, maxFileBytes: 200 * 1024 * 1024 },
 };
 
@@ -152,7 +152,7 @@ function startCheckout() {
 
 const API_CONVERT   = '/api/convert';
 const MAX_FILES     = 5;
-let MAX_BYTES       = 50 * 1024 * 1024;   // default Basic; se actualiza tras cargar el plan
+let MAX_BYTES       = 40 * 1024 * 1024;   // default Basic; se actualiza tras cargar el plan
 const PREVIEW_LIMIT = 6_000;              // chars mostrados en vista previa
 
 const ALLOWED_EXTS = new Set(['.pdf', '.epub', '.mobi', '.azw3', '.djvu', '.txt']);

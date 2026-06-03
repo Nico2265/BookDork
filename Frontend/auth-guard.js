@@ -47,13 +47,24 @@ onAuthStateChanged(auth, user => {
     return;
   }
 
-  // Usuario autenticado: mostrar menú con nombre y botón de salida
+  // Usuario autenticado: mostrar el correo (estilo ChatGPT, abajo a la izquierda)
+  // como enlace a la cuenta, más el botón de salida.
   const menu = document.getElementById('user-menu');
   if (!menu) return;
 
-  const name = _esc(_displayName(user));
+  // El correo es el identificador principal; si la cuenta es solo-teléfono,
+  // se cae al teléfono o al nombre visible.
+  const identity = user.email || user.phoneNumber || _displayName(user);
+  const label    = _esc(identity);
+  const initial  = _esc((identity || 'U').trim().charAt(0).toUpperCase() || 'U');
+  const onAccount = window.location.pathname === '/account';
+
   menu.innerHTML = `
-    <span class="user-display-name" title="${name}">${name}</span>
+    <a class="footer-account-link${onAccount ? ' is-active' : ''}" href="/account"
+       title="Ver mi cuenta — ${label}" aria-label="Mi cuenta (${label})"${onAccount ? ' aria-current="page"' : ''}>
+      <span class="footer-account-avatar" aria-hidden="true">${initial}</span>
+      <span class="footer-account-email">${label}</span>
+    </a>
     <button id="logout-btn" class="footer-logout-btn" aria-label="Cerrar sesión">Salir</button>
   `;
 

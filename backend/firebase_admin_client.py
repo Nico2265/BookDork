@@ -235,6 +235,116 @@ async def set_user_plan(uid: str, new_plan: Plan, changed_by: str) -> dict:
     return result
 
 
+async def activate_subscription(
+    uid: str,
+    plan: Plan,
+    transaction_id: str,
+    payment_token: str,
+    amount: int,
+    period_days: int = 30,
+) -> dict:
+    """
+    Activa (o renueva) una suscripción de pago tras verificar el token de pago.
+
+    Escribe atómicamente, vía Admin SDK (ignora las reglas de Firestore), todos
+    los campos de estado de la suscripción. El cliente NUNCA puede escribir estos
+    campos por sí mismo (las reglas bloquean `update`), por lo que el plan solo
+    puede elevarse a través de este camino verificado en el backend.
+
+    Campos escritos:
+      plan                 — basic | pro
+      estadoPlan           — 'activo'
+      fechaCompra          — ISO-8601 UTC (día de compra)
+      fechaVencimiento     — ISO-8601 UTC (día de compra + period_days)
+      renovacionAutomatica — True
+      ultimoPagoId         — id de transacción del recibo
+      ultimoPagoToken      — token de pago verificado (auditoría)
+      ultimoPagoMonto      — total cobrado (CLP)
+      planActualizadoEn    — serverTimestamp (auditoría no falsificable)
+
+    Returns:
+        dict con fecha_compra y fecha_vencimiento (ISO) para construir el recibo.
+
+    Raises:
+        ValueError    si el usuario no existe en Firebase Auth.
+        RuntimeError  si el Admin SDK no está inicializado.
+    """
+    import datetime
+
+    await get_user_by_uid(uid)  # valida existencia (ValueError si no)
+
+    now  = datetime.datetime.now(datetime.timezone.utc)
+    venc = now + datetime.timedelta(days=period_days)
+
+    fields = {
+        "plan":                 plan.value,
+        "estadoPlan":           "activo",
+        "fechaCompra":          now.isoformat(),
+        "fechaVencimiento":     venc.isoformat(),
+        "renovacionAutomatica": True,
+        "ultimoPagoId":         transaction_id,
+        "ultimoPagoToken":      payment_token,
+        "ultimoPagoMonto":      amount,
+        "planActualizadoEn":    fb_firestore.SERVER_TIMESTAMP,
+    }
+
+    def _write() -> None:
+        _get_db().collection(_COLLECTION).document(uid).set(fields, merge=True)
+
+    await asyncio.to_thread(_write)
+
+    logger.info(
+        "AUDIT subscription_activated — uid=%s plan=%s txn=%s monto=%s vence=%s",
+        uid[:8], plan.value, transaction_id, amount, venc.date().isoformat(),
+    )
+    return {
+        "fecha_compra":      now.isoformat(),
+        "fecha_vencimiento": venc.isoformat(),
+    }
+
+
+async def cancel_subscription(uid: str) -> dict:
+    """
+    Cancela la renovación automática de la suscripción mensual.
+
+    Política de cancelación al final del ciclo (igual que Stripe/ChatGPT): NO se
+    revoca el acceso de inmediato — el usuario conserva su plan hasta
+    `fechaVencimiento`; a partir de ahí, effective_plan() lo degrada a 'gratis'
+    de forma automática (no requiere job programado).
+
+    Returns:
+        dict con el estado tras la cancelación (incluye fecha_vencimiento).
+
+    Raises:
+        ValueError    si el usuario no existe o no tiene una suscripción activa.
+        RuntimeError  si el Admin SDK no está inicializado.
+    """
+    await get_user_by_uid(uid)
+
+    def _read_write() -> dict:
+        ref  = _get_db().collection(_COLLECTION).document(uid)
+        data = ref.get().to_dict() or {}
+        plan = data.get("plan") or "gratis"
+        if plan == "gratis":
+            raise ValueError("No hay una suscripción de pago que cancelar.")
+        ref.set(
+            {"estadoPlan": "cancelado", "renovacionAutomatica": False},
+            merge=True,
+        )
+        return {
+            "plan": plan,
+            "fecha_vencimiento": data.get("fechaVencimiento"),
+        }
+
+    result = await asyncio.to_thread(_read_write)
+
+    logger.info(
+        "AUDIT subscription_cancelled — uid=%s plan=%s vence=%s",
+        uid[:8], result["plan"], result.get("fecha_vencimiento"),
+    )
+    return result
+
+
 async def update_user_conversions(uid: str, fields: dict) -> None:
     """
     Escribe contadores de conversión en Firestore usando el Admin SDK

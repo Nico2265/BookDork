@@ -234,7 +234,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 _rate_limiter: _RateLimiter | None = None
 
-_RATE_LIMIT_EXCLUDED = frozenset({"/api/health", "/", "/search", "/converter", "/auth", "/plans"})
+_RATE_LIMIT_EXCLUDED = frozenset({"/api/health", "/", "/search", "/converter", "/auth", "/plans", "/account"})
 
 
 def get_rate_limiter() -> _RateLimiter:
