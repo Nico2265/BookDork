@@ -40,7 +40,7 @@
         <span class="legal-header__eyebrow">Documentación legal</span>
         <h1>Aviso Legal y Condiciones de Uso</h1>
         <p class="legal-header__meta">
-          Última actualización: mayo de 2026 &nbsp;·&nbsp; Versión 1.1
+          Última actualización: junio de 2026 &nbsp;·&nbsp; Versión 1.2
         </p>
       </header>
 
@@ -203,6 +203,7 @@
         <ul class="legal-list">
           <li>Correo electrónico y, opcionalmente, número de teléfono proporcionados durante el registro.</li>
           <li>Datos de uso asociados a la cuenta: plan contratado y contadores de conversiones realizadas.</li>
+          <li>Datos de la suscripción y facturación de la cuenta: estado del plan, fecha de compra, fecha de renovación o vencimiento, indicador de renovación automática e identificadores de la transacción simulada (incluido el token de pago firmado por el servidor). <strong>No se almacena ningún dato de tarjeta.</strong></li>
           <li>Identificadores técnicos de autenticación (token de sesión emitido por el proveedor de identidad).</li>
         </ul>
         <p>
@@ -231,26 +232,54 @@
         </div>
       </section>
 
-      <!-- 9. Planes, pagos y naturaleza del proceso de pago -->
+      <!-- 9. Planes, pagos, facturación y cancelación -->
       <section class="legal-section" aria-labelledby="s9">
-        <h2 id="s9"><span>09</span>Planes, pagos y naturaleza del proceso de pago</h2>
+        <h2 id="s9"><span>09</span>Planes, pagos, facturación y cancelación</h2>
         <p>
           BookDork ofrece distintos planes (gratuito y de pago) con límites de uso diferenciados. Los
           precios mostrados se expresan en pesos chilenos (CLP), incluyen el IVA cuando corresponda y
-          tienen carácter <strong>referencial</strong>.
+          tienen carácter <strong>referencial</strong>. Los planes de pago se contratan bajo una modalidad
+          de <strong>facturación mensual</strong> con renovación automática.
         </p>
         <div class="legal-disclaimer-box">
           <p>
-            <strong>Importante:</strong> el proceso de pago disponible actualmente en la Plataforma es una
-            <strong>demostración (simulación)</strong>. No se efectúa ningún cargo real, no interviene
-            ninguna pasarela de pago y los datos de la tarjeta introducidos se procesan
+            <strong>Naturaleza del pago (demostración):</strong> el proceso de pago disponible actualmente
+            en la Plataforma es una <strong>simulación</strong>. No se efectúa ningún cargo real ni
+            interviene ninguna pasarela de pago, y los datos de la tarjeta introducidos se procesan
             <strong>únicamente en el navegador del usuario</strong>: no se transmiten ni se almacenan en
             los servidores de BookDork.
           </p>
           <p>
-            Los mensajes de confirmación o de "plan activado" que muestra esta demostración no constituyen
-            una transacción comercial real ni generan obligación de pago alguna. La asignación efectiva de
-            planes se gestiona de forma administrativa.
+            No obstante, al completar el pago simulado la Plataforma <strong>activa y registra el plan en la
+            cuenta del usuario</strong> mediante un token de pago firmado por el servidor, generando un ciclo
+            de facturación con su fecha de compra y de renovación. Dicha activación modifica el nivel de
+            acceso de la cuenta, pero <strong>no constituye una transacción monetaria real</strong> ni genera
+            obligación de pago alguna.
+          </p>
+        </div>
+        <p>
+          <strong>Ciclo de facturación y renovación.</strong> Los planes de pago tienen una vigencia
+          mensual. La fecha de compra y la fecha de la próxima facturación (vencimiento) están disponibles en
+          todo momento en la vista de cuenta del usuario. Salvo cancelación, el plan se renueva
+          automáticamente al término de cada ciclo.
+        </p>
+        <p>
+          <strong>Cancelación.</strong> El usuario puede cancelar la renovación automática en cualquier
+          momento desde su vista de cuenta. La cancelación detiene los ciclos futuros, pero el usuario
+          <strong>conserva el acceso a su plan hasta la fecha de vencimiento del período ya en curso</strong>;
+          alcanzada esa fecha, la cuenta vuelve automáticamente al plan Gratis. No se generan reembolsos por
+          el período en curso.
+        </p>
+        <div class="legal-disclaimer-box">
+          <p>
+            <strong>Modificación de planes y precios — aviso previo de un (1) mes.</strong> Cualquier cambio
+            en los planes (precios, límites de uso, características o condiciones) se comunicará a los usuarios
+            con una antelación mínima de <strong>treinta (30) días</strong> y solo surtirá efecto una vez
+            transcurrido dicho plazo. Los usuarios con una suscripción activa mantendrán las condiciones
+            vigentes al momento de su contratación hasta la primera renovación posterior a la entrada en vigor
+            del cambio. Durante el período de aviso, el usuario podrá cancelar su suscripción sin penalización
+            si no acepta las nuevas condiciones, conforme a la <strong>Ley N.º 19.496 sobre Protección de los
+            Derechos de los Consumidores</strong>.
           </p>
         </div>
         <p>
@@ -269,6 +298,11 @@
           BookDork se reserva el derecho de modificar el presente aviso legal en cualquier momento.
           Los cambios entrarán en vigor desde su publicación en esta página. El uso continuado de la
           Plataforma tras la publicación de modificaciones constituye la aceptación de las nuevas condiciones.
+        </p>
+        <p>
+          No obstante lo anterior, las modificaciones que afecten a los <strong>planes y precios</strong> se
+          rigen por el <strong>aviso previo de un (1) mes</strong> establecido en la sección&nbsp;09 y no
+          surten efecto de forma inmediata.
         </p>
       </section>
 

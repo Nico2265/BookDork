@@ -69,10 +69,10 @@ async def _run(args: argparse.Namespace) -> int:
     if args.email:
         record = await get_user_by_email(args.email)  # ValueError si no existe
         uid    = record.uid
-        who    = f"{args.email} (uid={uid[:8]}…)"
+        who    = f"{args.email} (uid={uid[:8]}...)"
     else:
         uid = args.uid
-        who = f"uid={uid[:8]}…"
+        who = f"uid={uid[:8]}..."
 
     # ── Solo consultar ────────────────────────────────────────────────────────
     if args.show:
@@ -85,10 +85,10 @@ async def _run(args: argparse.Namespace) -> int:
     result   = await set_user_role(uid, new_role, changed_by=f"cli:{_actor()}")
     print(
         f"Rol de {who}: "
-        f"{result['role_anterior'].value} → {result['role_nuevo'].value}"
+        f"{result['role_anterior'].value} -> {result['role_nuevo'].value}"
     )
     print(
-        "Nota: el cambio se propaga al refrescar el ID token (≤1 h); las "
+        "Nota: el cambio se propaga al refrescar el ID token (<=1 h); las "
         "sesiones activas se revocaron para forzar re-login."
     )
     return 0

@@ -1,8 +1,9 @@
 /* ============================================================
    checkout.js — Flujo de pago simulado BookDork
    ------------------------------------------------------------
-   SIMULACIÓN: ningún dato de tarjeta sale del navegador ni se
-   envía a ningún servidor. El "pago" se resuelve en el cliente.
+   SIMULACIÓN: ningún dato de tarjeta sale del navegador. La tarjeta se valida
+   en el cliente; el backend nunca la recibe. Lo que sí va al servidor es la
+   activación del plan, mediante un token de pago firmado (ver "PAGO REAL").
 
    Estándares QA aplicados:
      · Validación Luhn del número de tarjeta (ISO/IEC 7812)
@@ -12,9 +13,25 @@
      · Estados accesibles: aria-invalid, role=status, aria-live
      · Submit deshabilitado hasta que el formulario sea válido
      · Estado de carga, manejo de error y recibo de éxito
+
+   PAGO REAL (server-side):
+     Tras validar la tarjeta en el cliente, el "pago" se confirma contra el
+     backend en dos pasos verificables:
+       1) POST /api/billing/checkout → token de pago firmado (intención).
+       2) POST /api/billing/confirm  → el backend verifica el token y ACTIVA
+          el plan del usuario en Firestore. El recibo muestra los datos
+          canónicos devueltos por el servidor (incl. fecha de vencimiento).
+     Requiere sesión iniciada para asociar el plan al usuario.
    ============================================================ */
+import { auth } from '/static/firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
 (function () {
   'use strict';
+
+  // Usuario autenticado actual (necesario para asociar el plan a la cuenta).
+  var currentUser = null;
+  onAuthStateChanged(auth, function (u) { currentUser = u; });
 
   /* ── Catálogo de planes ─────────────────────────────────────── */
   var PLANS = {
@@ -24,7 +41,7 @@
       desc: 'Para lectores habituales y estudiantes.',
       feats: [
         '50 conversiones a Markdown por mes',
-        'Archivos de hasta 50 MB',
+        'Archivos de hasta 40 MB',
         'Conversión en paralelo (hasta 5 documentos)',
         'Soporte por correo (48 h)',
         'Acceso a The Info Vault',
@@ -72,7 +89,7 @@
       return null;
     }
     var path = raw.split('?')[0].split('#')[0];
-    var allowed = ['/converter', '/search', '/vault', '/plans'];
+    var allowed = ['/converter', '/search', '/vault', '/plans', '/account'];
     return allowed.indexOf(path) !== -1 ? raw : null;
   }
 
@@ -426,34 +443,108 @@
       statusEl.className = 'co-form-status';
       statusEl.textContent = '';
 
-      // Estado de carga (simula la pasarela).
-      submitBtn.disabled = true;
-      submitBtn.classList.add('co-submit--loading');
-      submitLabel.innerHTML = '<span class="co-spinner" aria-hidden="true"></span> Procesando pago…';
-
-      setTimeout(function () {
-        showSuccess(sel.plan, amounts, onlyDigits(els.card.value), els.email.value.trim());
-      }, 1600);
+      // Estado de carga (contacta el backend para activar el plan).
+      setLoading(true);
+      processPayment();
     });
 
-    /* ── Pantalla de éxito ────────────────────────────────────── */
-    function showSuccess(plan, amounts, cardDigits, email) {
+    /* ── Estado de carga / error del botón de pago ────────────── */
+    function setLoading(on) {
+      submitBtn.disabled = on;
+      submitBtn.classList.toggle('co-submit--loading', on);
+      if (on) {
+        submitLabel.innerHTML =
+          '<span class="co-spinner" aria-hidden="true"></span> Procesando pago…';
+      } else {
+        submitLabel.textContent = 'Pagar ' + clp(amounts.total) + ' CLP';
+      }
+    }
+
+    function paymentError(message) {
+      setLoading(false);
+      statusEl.className = 'co-form-status co-form-status--error';
+      statusEl.textContent = message || 'No pudimos procesar el pago. Intenta nuevamente.';
+      refreshSubmit();
+    }
+
+    // Extrae un mensaje de error legible de una respuesta de la API.
+    async function apiError(res, fallback) {
+      try {
+        var data = await res.json();
+        var d = data && data.detail;
+        if (typeof d === 'string') return d;
+        if (d && typeof d === 'object' && d.message) return d.message;
+      } catch (e) { /* respuesta sin JSON */ }
+      return fallback || ('Error del servidor (' + res.status + ').');
+    }
+
+    /* ── Pago real: token + confirmación server-side ──────────── */
+    async function processPayment() {
+      // El plan se asocia al usuario: exige sesión iniciada.
+      if (!currentUser) {
+        var here = window.location.pathname + window.location.search;
+        window.location.href = '/auth?next=' + encodeURIComponent(here);
+        return;
+      }
+
+      try {
+        var idToken = await currentUser.getIdToken(false);
+        var headers = {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + idToken,
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+        };
+
+        // 1) Emitir token de pago (intención) para el plan seleccionado.
+        var coRes = await fetch('/api/billing/checkout', {
+          method: 'POST', headers: headers, credentials: 'omit',
+          body: JSON.stringify({ plan: sel.key }),
+        });
+        if (coRes.status === 401) {
+          paymentError('Tu sesión expiró. Vuelve a iniciar sesión para completar el pago.');
+          return;
+        }
+        if (!coRes.ok) { paymentError(await apiError(coRes, 'No se pudo iniciar el pago.')); return; }
+        var co = await coRes.json();
+
+        // 2) Confirmar: el backend verifica el token y activa el plan.
+        var cfRes = await fetch('/api/billing/confirm', {
+          method: 'POST', headers: headers, credentials: 'omit',
+          body: JSON.stringify({ token: co.token }),
+        });
+        if (!cfRes.ok) { paymentError(await apiError(cfRes, 'No se pudo confirmar el pago.')); return; }
+        var sub = await cfRes.json();
+
+        showSuccess(sel.plan, co, sub, onlyDigits(els.card.value), els.email.value.trim());
+      } catch (err) {
+        paymentError('Sin conexión con el servidor. Revisa tu red e intenta de nuevo.');
+      }
+    }
+
+    /* ── Formatea una fecha ISO a texto largo es-CL ───────────── */
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    /* ── Pantalla de éxito (datos canónicos del backend) ──────── */
+    function showSuccess(plan, co, sub, cardDigits, email) {
       var last4 = cardDigits.slice(-4);
-      var orderId = 'BD-' + Date.now().toString(36).toUpperCase().slice(-6) +
-                    '-' + Math.floor(Math.random() * 9000 + 1000);
-      var now = new Date();
 
       $('success-msg').textContent =
         'Activamos tu plan ' + plan.name + '. Enviamos el comprobante a ' + email + '.';
       $('rcpt-plan').textContent = plan.name + ' (mensual)';
-      $('rcpt-amount').textContent = clp(amounts.total) + ' CLP';
+      $('rcpt-amount').textContent = clp(co.monto) + ' CLP';
       $('rcpt-card').textContent =
         (BRAND_LABELS[currentBrand] || 'Tarjeta') + ' •••• ' + last4;
-      $('rcpt-order').textContent = orderId;
-      $('rcpt-date').textContent = now.toLocaleString('es-CL', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      });
+      $('rcpt-order').textContent = co.transaction_id;
+      $('rcpt-date').textContent = fmtDate(sub.fecha_compra);
+
+      var renewEl = $('rcpt-renew');
+      if (renewEl) renewEl.textContent = fmtDate(sub.fecha_vencimiento);
 
       var overlay = $('success-overlay');
       overlay.hidden = false;

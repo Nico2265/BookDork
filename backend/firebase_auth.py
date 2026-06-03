@@ -308,7 +308,7 @@ async def get_auth_context(
 
 _PLAN_LIMITS: dict[str, dict] = {
     "gratis": {"type": "lifetime", "max": 5,   "max_file_bytes": 20  * 1024 * 1024},
-    "basic":  {"type": "daily",    "max": 50,  "max_file_bytes": 50  * 1024 * 1024},
+    "basic":  {"type": "daily",    "max": 50,  "max_file_bytes": 40  * 1024 * 1024},
     "pro":    {"type": "daily",    "max": 200, "max_file_bytes": 200 * 1024 * 1024},
 }
 
@@ -335,7 +335,10 @@ async def _get_uid_lock(uid: str) -> asyncio.Lock:
 
 def _remaining_conversions(data: dict, today: str) -> int:
     """Calcula las conversiones disponibles para un usuario dado su plan."""
-    plan   = data.get("plan") or "gratis"
+    # Plan EFECTIVO: si la suscripción de pago venció, degrada a 'gratis'
+    # automáticamente (la baja efectiva ocurre al expirar el ciclo).
+    from .billing import effective_plan
+    plan   = effective_plan(data)
     limits = _PLAN_LIMITS.get(plan, _PLAN_LIMITS["gratis"])
 
     if limits["type"] == "lifetime":
@@ -392,8 +395,9 @@ async def check_and_reserve(
             )
 
         # ── 2. Calcular slots disponibles ─────────────────────────────────────
+        from .billing import effective_plan
         remaining = _remaining_conversions(data, today)
-        plan      = data.get("plan") or "gratis"
+        plan      = effective_plan(data)
 
         if remaining <= 0:
             raise HTTPException(
@@ -442,11 +446,16 @@ async def check_and_reserve(
 
 
 async def get_user_plan_limits(uid: str) -> dict:
-    """Devuelve la entrada de _PLAN_LIMITS para el plan actual del usuario."""
+    """Devuelve la entrada de _PLAN_LIMITS para el plan EFECTIVO del usuario.
+
+    Aplica la expiración de la suscripción: un plan de pago vencido se trata
+    como 'gratis' a efectos de límites de tamaño y conversiones.
+    """
     from .firebase_admin_client import get_firestore_user
+    from .billing import effective_plan
     try:
         data = await get_firestore_user(uid)
-        plan = data.get("plan") or "gratis"
+        plan = effective_plan(data)
     except Exception:
         plan = "gratis"
     return _PLAN_LIMITS.get(plan, _PLAN_LIMITS["gratis"])

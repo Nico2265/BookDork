@@ -662,12 +662,63 @@ button { font-family: inherit; }
 }
 .site-footer p { font-size: 0.78rem; color: var(--text-3); }
 
-/* Menú de usuario en el footer (estilo Claude) */
+/* Menú de usuario en el footer (estilo ChatGPT: correo abajo a la izquierda) */
 .footer-user-menu {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  /* Lleva el bloque de cuenta al extremo izquierdo y empuja el copyright
+     a la derecha sin alterar el resto de la estructura del footer. */
+  order: -1;
+  margin-right: auto;
+}
+
+/* Enlace de cuenta: avatar con inicial + correo. Resalta al pasar el puntero. */
+.footer-account-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.footer-account-link:hover,
+.footer-account-link:focus-visible {
+  background: var(--gold-dim);
+  border-color: var(--border-focus);
+  color: var(--text-1);
+  outline: none;
+}
+.footer-account-link.is-active {
+  background: var(--bg-hover);
+  border-color: var(--border);
+  color: var(--text-1);
+}
+.footer-account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold) 0%, #b07d3f 100%);
+  color: #0a0a0e;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+}
+.footer-account-email {
+  font-size: 0.8rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .user-display-name {
   font-size: 0.8rem;
