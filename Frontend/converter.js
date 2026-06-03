@@ -360,7 +360,7 @@ function renderFileList() {
   const estimateEl = document.getElementById('queue-estimate');
   if (estimateEl) {
     const totalBytes = selectedFiles.reduce((s, f) => s + f.size, 0);
-    const estSecs    = Math.max(15, (totalBytes / 1048576) * 1.5);
+    const estSecs    = Math.max(3, (totalBytes / 1048576) * 0.7);
     estimateEl.textContent = `${fmtBytes(totalBytes)} total · ~${fmtDuration(estSecs)} estimados`;
   }
 
@@ -390,9 +390,11 @@ async function uploadFiles(files) {
     xhr.upload.addEventListener('load', () => {
       _convStart = Date.now();
 
-      // Estimate conversion time: ~1.5s per MB (pdfminer heuristic, conservative)
+      // Estimación de conversión: ~0.7s por MB (PyMuPDF + pool pre-calentado).
+      // El enriquecimiento ISBN ya no está en la ruta crítica, así que el piso
+      // bajó de 15s a 3s — coherente con el objetivo de <5s por conversión.
       const totalMB    = files.reduce((s, f) => s + f.size, 0) / 1048576;
-      const estSeconds = Math.max(15, totalMB * 1.5);
+      const estSeconds = Math.max(3, totalMB * 0.7);
 
       let pct = 58;
       const TICK_MS    = 300;
@@ -456,6 +458,74 @@ async function uploadFiles(files) {
   });
 }
 
+// ─── Metadatos del libro (carga diferida vía /api/book-meta) ──────────────────
+
+const API_BOOK_META = '/api/book-meta';
+
+/** Rellena el panel de metadatos con la respuesta de Open Library. */
+function populateMeta(meta, metaPanel) {
+  if (!meta || Object.keys(meta).length === 0) return;
+
+  const coverEl  = metaPanel.querySelector('.cv-rc-cover');
+  const descEl   = metaPanel.querySelector('.cv-rc-meta-desc');
+  const pubEl    = metaPanel.querySelector('.cv-rc-meta-pub');
+  const linkEl   = metaPanel.querySelector('.cv-rc-meta-link');
+  const subjWrap = metaPanel.querySelector('.cv-rc-meta-subjects');
+
+  const safeCover = safeUrl(meta.cover_url);
+  if (safeCover) {
+    coverEl.src = safeCover;
+    coverEl.alt = meta.title || 'Portada';
+  } else {
+    coverEl.hidden = true;
+  }
+
+  descEl.textContent = meta.description || '';
+  descEl.hidden      = !meta.description;
+
+  const pubParts = [meta.publisher, meta.publish_date, meta.pages ? `${meta.pages} pp.` : ''].filter(Boolean);
+  pubEl.textContent = pubParts.join(' · ');
+  pubEl.hidden      = pubParts.length === 0;
+
+  const safeInfo = safeUrl(meta.info_url);
+  if (safeInfo) {
+    linkEl.href = safeInfo;
+  } else {
+    linkEl.hidden = true;
+  }
+
+  (meta.subjects || []).slice(0, 6).forEach(s => {
+    const tag = document.createElement('span');
+    tag.className   = 'cv-rc-meta-subject';
+    tag.textContent = s;
+    subjWrap.appendChild(tag);
+  });
+
+  metaPanel.hidden = false;
+}
+
+/** Pide metadatos por ISBN sin bloquear el render; falla en silencio. */
+async function loadBookMeta(isbn, metaPanel) {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+    const idToken = await user.getIdToken(false);
+    const url = `${API_BOOK_META}?isbn=${encodeURIComponent(isbn)}`;
+    const resp = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
+    });
+    if (!resp.ok) return;
+    const meta = await resp.json();
+    populateMeta(meta, metaPanel);
+  } catch {
+    /* sin metadatos: el panel queda oculto, la conversión no se ve afectada */
+  }
+}
+
 // ─── Renderizar resultados ────────────────────────────────────────────────────
 
 function renderResults(data) {
@@ -497,45 +567,13 @@ function renderResults(data) {
       copyBtn.addEventListener('click', () => copyText(result.markdown, copyBtn));
       dlBtn.addEventListener('click',   () => downloadFile(result.markdown, result.md_filename));
 
-      // ── Panel de información ISBN (Open Library) ──────────────────────────
-      const meta = result.book_meta;
-      if (meta && metaPanel) {
-        const coverEl    = metaPanel.querySelector('.cv-rc-cover');
-        const descEl     = metaPanel.querySelector('.cv-rc-meta-desc');
-        const pubEl      = metaPanel.querySelector('.cv-rc-meta-pub');
-        const linkEl     = metaPanel.querySelector('.cv-rc-meta-link');
-        const subjWrap   = metaPanel.querySelector('.cv-rc-meta-subjects');
-
-        const safeCover = safeUrl(meta.cover_url);
-        if (safeCover) {
-          coverEl.src = safeCover;
-          coverEl.alt = meta.title || 'Portada';
-        } else {
-          coverEl.hidden = true;
-        }
-
-        descEl.textContent = meta.description || '';
-        descEl.hidden      = !meta.description;
-
-        const pubParts = [meta.publisher, meta.publish_date, meta.pages ? `${meta.pages} pp.` : ''].filter(Boolean);
-        pubEl.textContent = pubParts.join(' · ');
-        pubEl.hidden      = pubParts.length === 0;
-
-        const safeInfo = safeUrl(meta.info_url);
-        if (safeInfo) {
-          linkEl.href = safeInfo;
-        } else {
-          linkEl.hidden = true;
-        }
-
-        (meta.subjects || []).slice(0, 6).forEach(s => {
-          const tag = document.createElement('span');
-          tag.className   = 'cv-rc-meta-subject';
-          tag.textContent = s;
-          subjWrap.appendChild(tag);
-        });
-
-        metaPanel.hidden = false;
+      // ── Panel de información ISBN (Open Library) — carga diferida ─────────
+      // Los metadatos NO viajan en la respuesta de /api/convert para no
+      // bloquear la entrega del Markdown esperando a un tercero. Si la
+      // conversión detectó un ISBN, lo pedimos aparte a /api/book-meta y
+      // rellenamos el panel cuando llega (o lo dejamos oculto si no hay datos).
+      if (result.isbn && metaPanel) {
+        loadBookMeta(result.isbn, metaPanel);
       }
     } else {
       card.classList.add('cv-result-card--err');

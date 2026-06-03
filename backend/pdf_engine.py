@@ -38,6 +38,8 @@ logger = logging.getLogger("bookdork.pdf_engine")
 # Detección de dependencias opcionales (todas con fallback gracioso)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# PyMuPDF (fitz) se importa de forma EAGER: es la dependencia base para todo
+# PDF, su import es barato (~50 ms) y todo proceso del pool la necesita.
 try:
     import fitz as _fitz          # PyMuPDF
     _PYMUPDF_OK = True
@@ -47,30 +49,70 @@ except ImportError:
     _PYMUPDF_OK = False
     logger.info("PyMuPDF no disponible. Instala con: pip install pymupdf")
 
-try:
-    import torch as _torch
-    _CUDA_OK = _torch.cuda.is_available()
-    if _CUDA_OK:
-        _gpu_name = _torch.cuda.get_device_name(0)
-        _gpu_mem  = _torch.cuda.get_device_properties(0).total_memory // (1024 ** 3)
-        logger.info("GPU detectada: %s (%d GB VRAM) — OCR acelerado por GPU activo.",
-                    _gpu_name, _gpu_mem)
-    else:
-        logger.info("CUDA no disponible — OCR usará CPU si se activa.")
-except ImportError:
-    _torch   = None
-    _CUDA_OK = False
+# ─────────────────────────────────────────────────────────────────────────────
+# Imports PESADOS diferidos (torch / easyocr / markitdown)
+# ─────────────────────────────────────────────────────────────────────────────
+# Importar torch en el top-level cuesta 3–5 s y carga CUDA. En Windows el
+# ProcessPoolExecutor usa 'spawn', así que CADA proceso del pool reimportaba el
+# módulo entero y pagaba ese coste en el arranque — aunque solo fuera a procesar
+# PDFs digitales (que jamás tocan la GPU). Diferimos estos imports a la primera
+# necesidad real: los procesos que solo hacen texto/EPUB arrancan en milisegundos
+# y el coste de torch se paga UNA vez, en el proceso principal, durante prewarm().
+#
+# `_CUDA_OK` / `_MARKITDOWN_OK` usan None como centinela de "aún no probado".
 
-try:
-    import warnings as _warnings
-    with _warnings.catch_warnings():
-        _warnings.filterwarnings("ignore", message="Couldn't find ffmpeg", category=RuntimeWarning)
-        from markitdown import MarkItDown as _MarkItDown
-        _md_engine = _MarkItDown()
-    _MARKITDOWN_OK = True
-except ImportError:
-    _md_engine     = None
-    _MARKITDOWN_OK = False
+_torch          = None
+_CUDA_OK: Optional[bool] = None      # None = sin probar; True/False = resultado
+_md_engine      = None
+_MARKITDOWN_OK: Optional[bool] = None
+
+
+def _probe_cuda() -> bool:
+    """Detecta CUDA de forma diferida y cachea el resultado en `_CUDA_OK`.
+
+    Idempotente y barato tras la primera llamada. Importar torch aquí (y no en
+    el top-level) evita que los procesos del pool sin OCR carguen CUDA.
+    """
+    global _torch, _CUDA_OK
+    if _CUDA_OK is not None:
+        return _CUDA_OK
+    try:
+        import torch as _t
+        _torch  = _t
+        _CUDA_OK = bool(_t.cuda.is_available())
+        if _CUDA_OK:
+            name = _t.cuda.get_device_name(0)
+            mem  = _t.cuda.get_device_properties(0).total_memory // (1024 ** 3)
+            logger.info("GPU detectada: %s (%d GB VRAM) — OCR acelerado por GPU activo.",
+                        name, mem)
+        else:
+            logger.info("CUDA no disponible — OCR usará CPU si se activa.")
+    except ImportError:
+        _torch   = None
+        _CUDA_OK = False
+    return _CUDA_OK
+
+
+def _ensure_markitdown():
+    """Carga MarkItDown de forma diferida. Devuelve el engine o None.
+
+    El motor se construye una sola vez y se cachea en `_md_engine`.
+    """
+    global _md_engine, _MARKITDOWN_OK
+    if _MARKITDOWN_OK is not None:
+        return _md_engine
+    try:
+        import warnings as _warnings
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings(
+                "ignore", message="Couldn't find ffmpeg", category=RuntimeWarning)
+            from markitdown import MarkItDown as _MarkItDown
+            _md_engine = _MarkItDown()
+        _MARKITDOWN_OK = True
+    except ImportError:
+        _md_engine     = None
+        _MARKITDOWN_OK = False
+    return _md_engine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constantes de configuración
@@ -134,24 +176,29 @@ class _OCRConfig:
     pages_parallel:  int   = 3
     gpu_concurrency: int   = 3
     gpu_timeout_s:   float = 8.0
+    force_gpu:       bool  = False   # True = OCR nunca cae a CPU (máxima fidelidad)
 
 
 _cfg = _OCRConfig()
 
 
 def configure(*, dpi: int = 200, pages_parallel: int = 3,
-              gpu_concurrency: int = 3, gpu_timeout_s: float = 8.0) -> None:
+              gpu_concurrency: int = 3, gpu_timeout_s: float = 8.0,
+              force_gpu: bool = False) -> None:
     """Llamado desde lifespan tras leer Settings. Idempotente."""
     global _gpu_sem
     _cfg.dpi             = max(72, int(dpi))
     _cfg.pages_parallel  = max(1, int(pages_parallel))
     _cfg.gpu_concurrency = max(1, int(gpu_concurrency))
     _cfg.gpu_timeout_s   = max(0.0, float(gpu_timeout_s))
+    _cfg.force_gpu       = bool(force_gpu)
     # Re-crear el semáforo con la nueva concurrencia.
     _gpu_sem = threading.Semaphore(_cfg.gpu_concurrency)
     logger.info(
-        "OCR config: DPI=%d, pages_parallel=%d, gpu_concurrency=%d, gpu_timeout=%.1fs",
-        _cfg.dpi, _cfg.pages_parallel, _cfg.gpu_concurrency, _cfg.gpu_timeout_s,
+        "OCR config: DPI=%d, pages_parallel=%d, gpu_concurrency=%d, "
+        "gpu_timeout=%.1fs, force_gpu=%s",
+        _cfg.dpi, _cfg.pages_parallel, _cfg.gpu_concurrency,
+        _cfg.gpu_timeout_s, _cfg.force_gpu,
     )
 
 
@@ -166,8 +213,12 @@ _ocr_lock       = threading.Lock()
 # ─────────────────────────────────────────────────────────────────────────────
 
 def is_available() -> bool:
-    """True si al menos un motor de conversión está disponible."""
-    return _MARKITDOWN_OK or _PYMUPDF_OK
+    """True si al menos un motor de conversión está disponible.
+
+    Corto-circuita en PyMuPDF para no forzar el import de MarkItDown en el
+    chequeo (caso normal: PyMuPDF presente).
+    """
+    return _PYMUPDF_OK or (_ensure_markitdown() is not None)
 
 
 def convert_document(content: bytes, ext: str, filename: str) -> dict:
@@ -196,11 +247,16 @@ def convert_document(content: bytes, ext: str, filename: str) -> dict:
 
 
 def get_engine_status() -> dict:
-    """Devuelve el estado de cada motor para el endpoint /api/health."""
+    """Devuelve el estado de cada motor para el endpoint /api/health.
+
+    Fuerza las probes diferidas (torch / markitdown) para reportar el estado
+    real. Solo se llama en el proceso principal y rara vez (health check), así
+    que el coste de import diferido aquí es irrelevante.
+    """
     return {
         "pymupdf":        _PYMUPDF_OK,
-        "cuda":           _CUDA_OK,
-        "markitdown":     _MARKITDOWN_OK,
+        "cuda":           _probe_cuda(),
+        "markitdown":     _ensure_markitdown() is not None,
         "ocr_gpu_ready":  _ocr_reader_gpu is not None,
         "ocr_cpu_ready":  _ocr_reader_cpu is not None,
     }
@@ -258,10 +314,17 @@ def _convert_pdf_pymupdf(content: bytes, filename: str) -> dict:
     n_pages  = len(doc)
     sample   = min(_OCR_SAMPLE_PAGES, n_pages)
 
-    img_pages = sum(
-        1 for i in range(sample)
-        if len(doc[i].get_text("text").strip()) < _MIN_TEXT_CHARS
-    )
+    # Extrae el texto de las páginas de muestra UNA sola vez y lo cachea: sirve
+    # tanto para la detección de escaneado como para el bucle de extracción
+    # posterior. Antes estas páginas se extraían dos veces (en PDFs pequeños eso
+    # casi duplicaba el coste). Mismo get_text/flags → salida idéntica.
+    sample_texts: dict[int, str] = {}
+    img_pages = 0
+    for i in range(sample):
+        t = doc[i].get_text("text").strip()
+        sample_texts[i] = t
+        if len(t) < _MIN_TEXT_CHARS:
+            img_pages += 1
     scanned_ratio = img_pages / max(sample, 1)
 
     if scanned_ratio > _SCANNED_THRESHOLD:
@@ -285,9 +348,11 @@ def _convert_pdf_pymupdf(content: bytes, filename: str) -> dict:
         return stem_result
 
     # ── Ruta texto tradicional: extrae todas las páginas con PyMuPDF ─────────
+    # Reutiliza el texto ya extraído para las páginas de muestra; solo extrae de
+    # nuevo las páginas no muestreadas (índices ≥ sample).
     parts = []
-    for page in doc:
-        text = page.get_text("text").strip()
+    for i in range(n_pages):
+        text = sample_texts[i] if i in sample_texts else doc[i].get_text("text").strip()
         if text:
             parts.append(text)
 
@@ -320,7 +385,22 @@ def _ocr_page_with_fallback(reader_gpu, page_idx: int, arr, filename: str):
     Ejecuta OCR sobre un array. Intenta GPU con timeout; si no se obtiene
     el slot en _cfg.gpu_timeout_s segundos cae a CPU automáticamente.
     Devuelve (page_idx, texto, engine_used) o (page_idx, "", error_str).
+
+    Si _cfg.force_gpu está activo y hay reader GPU, NUNCA cae a CPU: espera el
+    slot GPU de forma bloqueante y, ante error de GPU, devuelve error en vez de
+    degradar la calidad con el modelo CPU (que puede divergir en bordes).
     """
+    # 0. Modo solo-GPU: espera el slot sin timeout, sin fallback a CPU.
+    if _cfg.force_gpu and reader_gpu is not None:
+        with _gpu_sem:
+            try:
+                txts = reader_gpu.readtext(arr, detail=0, paragraph=True)
+                return page_idx, "\n".join(txts) if txts else "", "easyocr-cuda"
+            except Exception as exc:
+                logger.warning("OCR GPU error pág %d de '%s' (force_gpu, sin fallback): %s",
+                               page_idx, filename, exc)
+                return page_idx, "", f"error:{type(exc).__name__}"
+
     # 1. Intento GPU con timeout configurable
     if reader_gpu is not None and _cfg.gpu_timeout_s > 0:
         acquired = _gpu_sem.acquire(timeout=_cfg.gpu_timeout_s)
@@ -376,9 +456,15 @@ def _convert_pdf_ocr(doc, filename: str, metadata: dict) -> Optional[dict]:
         return None
 
     # Preferimos GPU si disponible; si no, el reader CPU se cargará lazy en _ocr_page_with_fallback.
-    reader_gpu = _get_ocr_reader(prefer_gpu=True) if _CUDA_OK else None
-    if reader_gpu is None and not _CUDA_OK:
+    cuda_ok    = _probe_cuda()
+    reader_gpu = _get_ocr_reader(prefer_gpu=True) if cuda_ok else None
+    if reader_gpu is None and not cuda_ok:
         # CUDA ausente → todo OCR va a CPU. Pre-cargamos el reader CPU una vez.
+        if _cfg.force_gpu:
+            logger.warning(
+                "OCR_FORCE_GPU activo pero CUDA no disponible para '%s' — "
+                "no se hará OCR (sin degradar a CPU).", filename)
+            return None
         if _get_ocr_reader(prefer_gpu=False) is None:
             return None
 
@@ -425,7 +511,8 @@ def _convert_markitdown(content: bytes, ext: str, filename: str) -> dict:
     Ruta de compatibilidad: MarkItDown soporta EPUB, MOBI, AZW3, DjVu, TXT y PDF.
     Crea un archivo temporal (MarkItDown requiere ruta en disco).
     """
-    if not _MARKITDOWN_OK:
+    md_engine = _ensure_markitdown()
+    if md_engine is None:
         return {
             "success":           False,
             "original_filename": filename,
@@ -438,7 +525,7 @@ def _convert_markitdown(content: bytes, ext: str, filename: str) -> dict:
             tmp.write(content)
             tmp_path = tmp.name
 
-        result   = _md_engine.convert(tmp_path)
+        result   = md_engine.convert(tmp_path)
         markdown = (result.text_content or "").strip()
 
         if not markdown:
@@ -504,7 +591,7 @@ def _get_ocr_reader(prefer_gpu: bool = True):
                     (usado por el path de fallback cuando GPU saturado).
     """
     global _ocr_reader_gpu, _ocr_reader_cpu
-    use_gpu = prefer_gpu and _CUDA_OK
+    use_gpu = prefer_gpu and _probe_cuda()
 
     with _ocr_lock:
         current = _ocr_reader_gpu if use_gpu else _ocr_reader_cpu
