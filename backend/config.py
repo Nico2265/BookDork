@@ -158,8 +158,30 @@ class Settings(BaseSettings):
     # antiguos o tipografías delicadas.
     OCR_DPI: int = 200
 
+    # Modo "solo GPU" para OCR. Cuando True, el OCR NUNCA cae a CPU: si la GPU
+    # está saturada, el worker espera el slot en lugar de degradar a CPU. Esto
+    # da resultados deterministas y de máxima fidelidad (el modelo GPU y el CPU
+    # pueden divergir en bordes), a costa de latencia bajo saturación.
+    # NOTA: solo afecta a PDFs ESCANEADOS (la única ruta que usa la GPU). La
+    # extracción de PDFs digitales y EPUB/MOBI es parsing CPU sin equivalente
+    # GPU — ver evaluación en docs/gpu_evaluation.md.
+    OCR_FORCE_GPU: bool = False
+
     # ── Conversión de archivos ────────────────────────────────────────────────
     CONVERT_TIMEOUT_SECONDS: int = 300   # Timeout máximo por archivo individual
+
+    # Pre-calienta el ProcessPoolExecutor al arrancar enviando una tarea dummy a
+    # cada proceso. Fuerza el spawn + import de pdf_engine ANTES de que llegue el
+    # primer usuario, eliminando el cold start (en Windows el spawn reimporta el
+    # módulo entero). Desactívalo solo si el arranque debe ser instantáneo.
+    CONVERT_POOL_PREWARM: bool = True
+
+    # Timeout (s) para la búsqueda de metadatos ISBN en Open Library. Esta
+    # llamada ya NO está en la ruta crítica de conversión (se sirve vía
+    # /api/book-meta de forma diferida y se enriquece la portada en background),
+    # así que un timeout corto solo afecta al panel de metadatos, nunca al
+    # Markdown entregado.
+    ISBN_LOOKUP_TIMEOUT_S: float = 4.0
     # Procesos de conversión TOTALES en el sistema (suma de todos los HTTP workers).
     # ProcessPoolExecutor crea procesos separados → cada uno tiene su propio GIL
     # → paralelismo CPU real. Si HTTP_WORKERS=N, cada worker abre un pool de

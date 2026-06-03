@@ -546,6 +546,16 @@ class ConversionCache:
             )
             self._db.commit()
 
+    def update_cover(self, file_hash: str, cover_url: str) -> None:
+        """Rellena la portada de una conversión ya guardada (enriquecimiento
+        en background tras devolver el Markdown). No-op si la fila no existe."""
+        with self._lock:
+            self._db.execute(
+                "UPDATE conversions SET cover_url = ? WHERE file_hash = ?",
+                (cover_url, file_hash),
+            )
+            self._db.commit()
+
     def get_by_book_id(self, book_id: str) -> Optional[tuple[str, str]]:
         """Return (markdown_content, filename) for a book, or None if not found."""
         with self._lock:

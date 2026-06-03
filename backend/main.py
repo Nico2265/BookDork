@@ -151,6 +151,24 @@ async def lifespan(app: FastAPI):
         max(1, len(my_convert_cores)), my_convert_cores, my_http_slot,
     )
 
+    # ── Pre-warm del pool de procesos ─────────────────────────────────────────
+    # En Windows el ProcessPoolExecutor usa 'spawn': cada worker reimporta
+    # backend.pdf_engine al crearse (lazy, en el primer submit). Sin pre-warm,
+    # las primeras N conversiones pagan ese arranque (~import de fitz + módulo).
+    # Enviamos una tarea trivial por proceso para forzar el spawn AHORA, de modo
+    # que el primer usuario reciba un pool ya caliente.
+    if settings.CONVERT_POOL_PREWARM:
+        n_workers = max(1, len(my_convert_cores))
+        try:
+            warm_futures = [
+                _convert_pool.submit(_pool_warmup) for _ in range(n_workers)
+            ]
+            for f in warm_futures:
+                f.result(timeout=60)
+            logger.info("✓ Pool de conversión pre-calentado (%d procesos listos).", n_workers)
+        except Exception as exc:
+            logger.warning("Pre-warm del pool falló (%s) — los workers se crearán lazy.", exc)
+
     # Afinidad del event loop: cada worker HTTP toma un core de HTTP_CPU_CORES.
     # Si hay menos cores que workers, se reparten cíclicamente (varios workers
     # comparten core → degradación gradual, no fallo).
@@ -186,6 +204,7 @@ async def lifespan(app: FastAPI):
         pages_parallel=settings.OCR_PAGES_PARALLEL,
         gpu_concurrency=settings.OCR_GPU_CONCURRENCY,
         gpu_timeout_s=settings.OCR_GPU_TIMEOUT_S,
+        force_gpu=settings.OCR_FORCE_GPU,
     )
 
     # Pre-cargar modelo EasyOCR: elimina ~1.5 s de cold start en la primera
@@ -261,7 +280,7 @@ async def _fetch_isbn_meta(isbn: str) -> dict:
 
     bib_key = f"ISBN:{isbn}"
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=settings.ISBN_LOOKUP_TIMEOUT_S) as client:
             resp = await client.get(
                 "https://openlibrary.org/api/books",
                 params={"bibkeys": bib_key, "format": "json", "jscmd": "details"},
@@ -300,6 +319,62 @@ async def _fetch_isbn_meta(isbn: str) -> dict:
     except Exception as exc:
         logger.debug("ISBN meta fetch failed for %s: %s", isbn, exc)
         return {}
+
+
+# ── Persistencia y enriquecimiento fuera de la ruta crítica ──────────────────
+
+# Tareas de fondo vivas: guardamos una referencia fuerte para que el GC no las
+# cancele antes de terminar (asyncio solo mantiene weakrefs a las tasks).
+_BG_TASKS: set[asyncio.Task] = set()
+
+
+def _spawn_bg(coro) -> None:
+    """Lanza una corrutina fire-and-forget con referencia fuerte y log de errores."""
+    task = asyncio.ensure_future(coro)
+    _BG_TASKS.add(task)
+    task.add_done_callback(_BG_TASKS.discard)
+
+
+def _persist_conversion(
+    cache, file_hash: str, md: str, name: str,
+    file_size: int, isbn: Optional[str], engine: Optional[str],
+) -> str:
+    """Clasifica y guarda una conversión en la caché. CPU-bound (regex/sqlite),
+
+    pensado para ejecutarse vía asyncio.to_thread y no bloquear el event loop.
+    La portada se rellena después en background (cover_url=None aquí).
+    """
+    return cache.put(
+        file_hash = file_hash,
+        markdown  = md,
+        filename  = name,
+        file_size = file_size,
+        isbn      = isbn,
+        language  = detect_language(md),
+        topic     = classify_topic(name, md),
+        engine    = engine,
+        title     = clean_title(name),
+        author    = extract_author_from_text(name, md[:6_000]),
+        year      = extract_year_from_text(name, md[:6_000]),
+        edition   = extract_edition_from_text(name, md[:2_000]),
+        cover_url = None,
+    )
+
+
+async def _enrich_cover_bg(cache, isbn: str, file_hash: str) -> None:
+    """Busca la portada en Open Library y la persiste en la caché (background).
+
+    No afecta a la respuesta de conversión: si falla o tarda, el Markdown ya
+    fue entregado. Solo mejora la portada mostrada en el 'vault'.
+    """
+    try:
+        meta = await _fetch_isbn_meta(isbn)
+        cover = meta.get("cover_url") if meta else None
+        if cover:
+            await asyncio.to_thread(cache.update_cover, file_hash, cover)
+    except Exception as exc:
+        logger.debug("Enriquecimiento de portada falló (isbn=%s): %s", isbn, exc)
+
 
 # Pool de procesos (ProcessPoolExecutor) — inicializado en lifespan.
 # Cada proceso tiene su propio GIL: paralelismo CPU real en múltiples núcleos.
@@ -402,6 +477,16 @@ def _worker_affinity_init(counter: multiprocessing.Value, cores: list) -> None:
 def _sync_convert(content: bytes, ext: str, filename: str) -> dict:
     """Ejecuta la conversión en un proceso del pool (no bloquea el event loop)."""
     return pdf_engine.convert_document(content, ext, filename)
+
+
+def _pool_warmup() -> int:
+    """Tarea trivial ejecutada en cada proceso del pool durante el pre-warm.
+
+    El simple hecho de ejecutarse fuerza el spawn del proceso y el import de
+    `backend.pdf_engine` (con PyMuPDF). Devuelve el PID para trazabilidad.
+    No carga torch/easyocr: esos imports siguen diferidos hasta que llegue un
+    PDF escaneado real (ver pdf_engine._probe_cuda)."""
+    return os.getpid()
 
 
 async def _read_limited(upload: UploadFile, max_bytes: int) -> bytes:
@@ -1057,6 +1142,29 @@ async def download_vault_book(
     )
 
 
+@app.get(
+    "/api/book-meta",
+    tags=["Conversión"],
+    summary="Metadatos de un libro por ISBN (Open Library), carga diferida",
+)
+async def get_book_meta(
+    isbn: str = Query(..., min_length=10, max_length=17),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Devuelve metadatos de Open Library para un ISBN.
+
+    Servido aparte de /api/convert para que la conversión no espere a un tercero
+    (ver evaluación de latencia). El frontend lo invoca de forma diferida tras
+    renderizar cada resultado. Requiere autenticación para evitar uso como proxy
+    abierto. Siempre responde 200 con `{}` si el ISBN no se encuentra.
+    """
+    normalized = re.sub(r'[^0-9Xx]', '', isbn).upper()
+    if len(normalized) not in (10, 13):
+        raise HTTPException(status_code=400, detail="ISBN inválido.")
+    meta = await _fetch_isbn_meta(normalized)
+    return JSONResponse(content=meta or {})
+
+
 @app.post(
     "/api/convert",
     tags=["Conversión"],
@@ -1079,6 +1187,7 @@ async def convert_books_to_markdown(
       • Semáforo global limita conversiones concurrentes en todo el servidor.
     """
     check_user_agent(request)
+    _t_start = time.perf_counter()   # instrumentación de latencia por etapa
 
     if not pdf_engine.is_available():
         raise HTTPException(
@@ -1140,6 +1249,7 @@ async def convert_books_to_markdown(
     read_results = await asyncio.gather(
         *[_safe_read(u, e) for u, e in valid_uploads]
     )
+    _t_read = time.perf_counter()
 
     # ── Separar cache hits de misses ──────────────────────────────────────────
     cache = get_cache(settings.CACHE_DIR) if settings.CACHE_ENABLED else None
@@ -1199,53 +1309,44 @@ async def convert_books_to_markdown(
     conversion_pairs = await asyncio.gather(
         *[_dispatch(i, c, e, n, h) for (i, c, e, n, h) in need_convert]
     )
+    _t_convert = time.perf_counter()
 
-    # ── Guardar en caché, enriquecer con Open Library y rellenar resultados ──
-    isbn_meta_tasks = {}
-    for orig_idx, content, file_hash, name, result in conversion_pairs:
-        if result.get("success"):
-            md   = result["markdown"]
-            isbn = extract_isbn(md[:5_000])
-            if isbn:
-                isbn_meta_tasks[orig_idx] = (isbn, content, file_hash, name, result)
-            else:
-                isbn_meta_tasks[orig_idx] = (None, content, file_hash, name, result)
-
-    # Buscar metadatos ISBN en paralelo para todos los archivos que lo tengan
-    async def _enrich(orig_idx: int, isbn, content, file_hash, name, result):
+    # ── Persistir en caché y devolver el Markdown SIN esperar a Open Library ──
+    # El fetch de metadatos ISBN solía estar en la ruta crítica: una llamada
+    # HTTP externa (hasta ISBN_LOOKUP_TIMEOUT_S por archivo) que podía añadir
+    # varios segundos a una conversión ya terminada. Ahora:
+    #   • Devolvemos `isbn` en cada resultado → el frontend pide los metadatos de
+    #     forma diferida a /api/book-meta (no bloquea el Markdown).
+    #   • La portada se enriquece en background y se guarda en la caché para que
+    #     el "vault" la muestre sin coste en la ruta crítica.
+    #   • La persistencia (regex CPU-bound + sqlite) corre en un hilo para no
+    #     bloquear el event loop.
+    async def _enrich(orig_idx: int, content: bytes, file_hash: str,
+                      name: str, result: dict):
         if not result.get("success"):
             return orig_idx, result
         md       = result["markdown"]
-        isbn_val = isbn
-        meta     = await _fetch_isbn_meta(isbn_val) if isbn_val else {}
+        isbn_val = extract_isbn(md[:5_000])
+        result["isbn"] = isbn_val   # consumido por el panel de metadatos diferido
         if cache:
-            book_id = cache.put(
-                file_hash = file_hash,
-                markdown  = md,
-                filename  = name,
-                file_size = len(content),
-                isbn      = isbn_val,
-                language  = detect_language(md),
-                topic     = classify_topic(name, md),
-                engine    = result.get("engine_used"),
-                title     = clean_title(name),
-                author    = extract_author_from_text(name, md[:6_000]),
-                year      = extract_year_from_text(name, md[:6_000]),
-                edition   = extract_edition_from_text(name, md[:2_000]),
-                cover_url = meta.get("cover_url") if meta else None,
+            book_id = await asyncio.to_thread(
+                _persist_conversion, cache, file_hash, md, name,
+                len(content), isbn_val, result.get("engine_used"),
             )
             result["book_id"] = book_id
-        if meta:
-            result["book_meta"] = meta
+            # Enriquecimiento de portada fire-and-forget (no bloquea la respuesta)
+            if isbn_val:
+                _spawn_bg(_enrich_cover_bg(cache, isbn_val, file_hash))
         return orig_idx, result
 
     # Archivos con error ya están en final_results; solo enriquecer los OK
     enrich_results = await asyncio.gather(*[
-        _enrich(i, *vals)
-        for i, vals in isbn_meta_tasks.items()
+        _enrich(orig_idx, content, file_hash, name, result)
+        for orig_idx, content, file_hash, name, result in conversion_pairs
     ])
     for orig_idx, result in enrich_results:
         final_results[orig_idx] = result
+    _t_enrich = time.perf_counter()
 
     # Combinar: conversiones reales + archivos rechazados por formato
     conversion_results = [r for r in final_results if r is not None]
@@ -1254,8 +1355,11 @@ async def convert_books_to_markdown(
     cache_hit_count  = sum(1 for r in conversion_results if r.get("cache_hit"))
 
     logger.info(
-        "Conversion done — uid=%s %d/%d OK  cache_hits=%d  slots_used=%d",
+        "Conversion done — uid=%s %d/%d OK  cache_hits=%d  slots_used=%d  "
+        "timing(s): read=%.2f convert=%.2f persist=%.2f total=%.2f",
         auth.uid[:8], success_count, len(all_results), cache_hit_count, slots,
+        _t_read - _t_start, _t_convert - _t_read,
+        _t_enrich - _t_convert, _t_enrich - _t_start,
     )
 
     return {
